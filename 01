@@ -1,0 +1,1314 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>昨日の自分を越えろ！ドット絵RPGヒーロー育成</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=DotGothic16&display=swap');
+
+    * {
+      box-sizing: border-box;
+      font-family: 'DotGothic16', monospace;
+      image-rendering: pixelated;
+    }
+
+    body {
+      background-color: #050510;
+      background-image:
+        radial-gradient(#1e1e38 15%, transparent 16%),
+        radial-gradient(#1e1e38 15%, transparent 16%);
+      background-size: 20px 20px;
+      background-position: 0 0, 10px 10px;
+      color: #ffffff;
+      margin: 0;
+      padding: 16px 8px;
+      display: flex;
+      justify-content: center;
+      min-height: 100vh;
+    }
+
+    /* ルビ（ふりがな）のスタイリング */
+    ruby {
+      ruby-align: center;
+    }
+    rt {
+      font-size: 0.65em;
+      color: #ffcc00;
+      font-weight: normal;
+      line-height: 1.2;
+    }
+
+    .rpg-window {
+      max-width: 460px;
+      width: 100%;
+      background: #000044;
+      border: 4px solid #ffffff;
+      outline: 4px solid #000000;
+      box-shadow: inset 0 0 0 4px #0000aa, 0 10px 30px rgba(0,0,0,0.8);
+      border-radius: 4px;
+      padding: 16px;
+    }
+
+    .title-banner {
+      text-align: center;
+      background: #e60000;
+      border: 2px solid #fff;
+      color: #ffff00;
+      font-size: 20px;
+      padding: 6px;
+      margin-bottom: 4px;
+      text-shadow: 2px 2px #000;
+      letter-spacing: 2px;
+    }
+
+    .subtitle {
+      text-align: center;
+      font-size: 13px;
+      color: #aaaaff;
+      margin-bottom: 12px;
+    }
+
+    /* 最上部に配置した保護者設定バー */
+    .parent-bar {
+      background: #000022;
+      border: 1px dashed #8888ff;
+      padding: 6px 10px;
+      font-size: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      border-radius: 4px;
+    }
+
+    .parent-btn {
+      background: #444477;
+      border: 1px solid #aaaaff;
+      color: #fff;
+      font-size: 11px;
+      padding: 3px 8px;
+      cursor: pointer;
+      border-radius: 3px;
+    }
+
+    .stage {
+      background: #000022;
+      border: 3px solid #5555ff;
+      border-radius: 4px;
+      padding: 16px;
+      text-align: center;
+      margin-bottom: 16px;
+      position: relative;
+    }
+
+    .level-badge {
+      display: inline-block;
+      background: #ffcc00;
+      color: #000;
+      font-size: 14px;
+      padding: 2px 8px;
+      border: 2px solid #fff;
+      margin-bottom: 8px;
+      font-weight: bold;
+    }
+
+    .level-badge rt {
+      color: #000000;
+      font-weight: bold;
+    }
+
+    #characterCanvas {
+      background: transparent;
+      display: block;
+      margin: 0 auto;
+      filter: drop-shadow(0 0 8px rgba(0,255,255,0.4));
+    }
+
+    .powering-up #characterCanvas {
+      animation: auraGlow 0.3s infinite alternate;
+    }
+
+    .leveling-up #characterCanvas {
+      animation: auraGlow 0.25s infinite alternate;
+    }
+
+    @keyframes auraGlow {
+      0% { filter: drop-shadow(0 0 6px #00ffff) drop-shadow(0 0 12px #ffff00); }
+      100% { filter: drop-shadow(0 0 16px #ff00ff) drop-shadow(0 0 24px #ffffff); }
+    }
+
+    .levelup-banner {
+      display: none;
+      position: absolute;
+      top: 8px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #ffcc00;
+      color: #000;
+      font-size: 13px;
+      padding: 4px 10px;
+      border: 2px solid #fff;
+      white-space: nowrap;
+      animation: floatUp 1.8s ease-out forwards;
+    }
+
+    @keyframes floatUp {
+      0% { opacity: 0; transform: translate(-50%, 10px); }
+      15% { opacity: 1; transform: translate(-50%, 0); }
+      80% { opacity: 1; }
+      100% { opacity: 0; transform: translate(-50%, -14px); }
+    }
+
+    .status-container {
+      display: flex;
+      justify-content: space-around;
+      background: #000;
+      border: 2px solid #fff;
+      padding: 8px;
+      margin-top: 8px;
+    }
+
+    .xp-bar-wrap {
+      background: #000;
+      border: 2px solid #fff;
+      height: 12px;
+      margin-top: 8px;
+      overflow: hidden;
+    }
+
+    .xp-bar-fill {
+      background: linear-gradient(90deg, #ffcc00, #ff8800);
+      height: 100%;
+      width: 0%;
+      transition: width 0.5s ease-out;
+    }
+
+    .xp-label {
+      text-align: center;
+      font-size: 11px;
+      color: #aaaaff;
+      margin-top: 4px;
+    }
+
+    .status-item {
+      text-align: center;
+    }
+
+    .status-title {
+      font-size: 12px;
+      color: #8888ff;
+    }
+
+    .status-num {
+      font-size: 22px;
+      color: #00ffcc;
+      text-shadow: 2px 2px #000;
+    }
+
+    .input-group {
+      background: #000033;
+      border: 2px solid #8888ff;
+      padding: 12px;
+      margin-bottom: 16px;
+    }
+
+    label {
+      display: block;
+      font-size: 14px;
+      color: #ffff00;
+      margin-bottom: 6px;
+      margin-top: 10px;
+    }
+
+    label:first-child {
+      margin-top: 0;
+    }
+
+    input[type="text"], select {
+      width: 100%;
+      background: #000;
+      color: #fff;
+      border: 2px solid #fff;
+      padding: 8px;
+      font-size: 14px;
+      margin-bottom: 10px;
+      outline: none;
+    }
+
+    .radio-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 12px;
+      background: #000;
+      border: 2px solid #fff;
+      padding: 8px;
+    }
+
+    .radio-item {
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+      font-size: 13px;
+      line-height: 1.8;
+      padding: 2px 4px;
+      border-radius: 3px;
+    }
+
+    .radio-item:hover {
+      background: #111144;
+    }
+
+    .radio-item input[type="radio"] {
+      margin-right: 8px;
+      accent-color: #ffcc00;
+      cursor: pointer;
+    }
+
+    .example-box {
+      font-size: 12px;
+      color: #aaaaff;
+      margin-bottom: 6px;
+      padding-left: 4px;
+      line-height: 1.8;
+    }
+
+    .flex-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    .rpg-btn {
+      width: 100%;
+      background: #cc0000;
+      color: #fff;
+      border: 3px solid #fff;
+      padding: 12px;
+      font-size: 18px;
+      cursor: pointer;
+      text-shadow: 2px 2px #000;
+      box-shadow: 3px 3px 0px #000;
+      margin-top: 8px;
+    }
+
+    .rpg-btn:active {
+      transform: translate(2px, 2px);
+      box-shadow: 1px 1px 0px #000;
+    }
+
+    .rpg-btn:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
+
+    .sub-btn {
+      background: #333366;
+      border: 2px solid #8888ff;
+      color: #ccccff;
+      font-size: 12px;
+      padding: 6px 10px;
+      cursor: pointer;
+      margin-top: 12px;
+    }
+
+    .msg-box {
+      background: #000;
+      border: 3px solid #fff;
+      padding: 12px;
+      margin-top: 16px;
+      display: none;
+      line-height: 1.8;
+      transition: border-color 0.2s ease;
+    }
+
+    .msg-title {
+      color: #ffcc00;
+      font-size: 16px;
+      margin-bottom: 6px;
+      border-bottom: 1px dashed #fff;
+      padding-bottom: 4px;
+      transition: color 0.2s ease;
+    }
+
+    .skill-name {
+      color: #00ffcc;
+      font-size: 15px;
+      margin-bottom: 6px;
+    }
+
+    .history-box {
+      background: #000022;
+      border: 2px solid #5555ff;
+      padding: 10px;
+      margin-top: 16px;
+    }
+
+    .history-title {
+      color: #aaaaff;
+      font-size: 13px;
+      margin-bottom: 6px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .history-list {
+      max-height: 160px;
+      overflow-y: auto;
+      font-size: 12px;
+    }
+
+    .history-entry {
+      display: flex;
+      justify-content: space-between;
+      padding: 4px 2px;
+      border-bottom: 1px dotted #333366;
+      color: #ccccdd;
+    }
+
+    .history-pt {
+      color: #00ffcc;
+      flex-shrink: 0;
+      margin-left: 8px;
+    }
+
+    .history-empty {
+      color: #666699;
+      font-size: 12px;
+      text-align: center;
+      padding: 8px 0;
+    }
+
+    .loading-note {
+      text-align: center;
+      font-size: 12px;
+      color: #8888ff;
+      margin-bottom: 8px;
+    }
+
+    .settings-box {
+      margin-top: 16px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="rpg-window">
+  <div class="title-banner">⚔️ <ruby>昨日<rt>きのう</rt></ruby>の<ruby>自分<rt>じぶん</rt></ruby>を<ruby>越<rt>こ</rt></ruby>えろ！</div>
+  <div class="subtitle">〜 <ruby>長岡<rt>ながおか</rt></ruby>ヒーロー<ruby>育成<rt>いくせい</rt></ruby>RPG 〜</div>
+
+  <!-- 最上部に配置した保護者設定バー -->
+  <div class="parent-bar">
+    <span id="lockStatus">🔓 プレイ<ruby>制限<rt>せいげん</rt></ruby>: <ruby>無制限<rt>むせいげん</rt></ruby></span>
+    <button class="parent-btn" onclick="toggleParentControl()">🔒 <ruby>保護者<rt>ほごしゃ</rt></ruby><ruby>設定<rt>せってい</rt></ruby></button>
+  </div>
+  
+  <div class="loading-note" id="loadingNote">セーブデータを<ruby>読<rt>よ</rt></ruby>み<ruby>込<rt>こ</rt></ruby>み<ruby>中<rt>ちゅう</rt></ruby>...</div>
+
+  <!-- ステージ画面 -->
+  <div class="stage" id="stage">
+    <div class="levelup-banner" id="levelupBanner">★ レベルアップ！ ★</div>
+    <div class="level-badge" id="heroTitle"></div>
+    <canvas id="characterCanvas" width="288" height="144" style="max-width:100%; height:auto; border:2px solid #333366;"></canvas>
+
+    <div class="xp-bar-wrap">
+      <div class="xp-bar-fill" id="xpBarFill"></div>
+    </div>
+    <div class="xp-label" id="xpLabel">-</div>
+
+    <div class="status-container">
+      <div class="status-item">
+        <div class="status-title"><ruby>今日<rt>きょう</rt></ruby>のパワー</div>
+        <div class="status-num" id="todayPower">-</div>
+      </div>
+      <div class="status-item">
+        <div class="status-title"><ruby>昨日<rt>きのう</rt></ruby>の<ruby>自分<rt>じぶん</rt></ruby></div>
+        <div class="status-num" id="yesterdayPower">-</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 入力フォーム -->
+  <div class="input-group">
+    <label>▶ ヒーローの<ruby>名<rt>な</rt></ruby>まえ</label>
+    <input type="text" id="heroName" value="ミライ" placeholder="※ほんみょうはいれないでね">
+
+    <!-- ラジオボタン形式のカテゴリー選択欄 -->
+    <label>▶ <ruby>取<rt>と</rt></ruby>り<ruby>組<rt>く</rt></ruby>んだカテゴリー</label>
+    <div class="radio-group">
+      <label class="radio-item">
+        <input type="radio" name="actionCategory" value="宿題・勉強" data-label="宿題・勉強" checked>
+        <span>【<ruby>学習<rt>がくしゅう</rt></ruby>】<ruby>宿題<rt>しゅくだい</rt></ruby>・<ruby>勉強<rt>べんきょう</rt></ruby>・<ruby>習<rt>なら</rt></ruby>い<ruby>事<rt>ごと</rt></ruby></span>
+      </label>
+      <label class="radio-item">
+        <input type="radio" name="actionCategory" value="お手伝い" data-label="お手伝い">
+        <span>【<ruby>貢献<rt>こうけん</rt></ruby>】お<ruby>手伝<rt>てつだ</rt></ruby>い・<ruby>掃除<rt>そうじ</rt></ruby></span>
+      </label>
+      <label class="radio-item">
+        <input type="radio" name="actionCategory" value="運動・健康" data-label="運動・健康">
+        <span>【<ruby>体力<rt>たいりょく</rt></ruby>】<ruby>運動<rt>うんどう</rt></ruby>・スポーツ・<ruby>早<rt>はや</rt></ruby><ruby>起<rt>お</rt></ruby>き</span>
+      </label>
+      <label class="radio-item">
+        <input type="radio" name="actionCategory" value="読書" data-label="読書">
+        <span>【<ruby>知識<rt>ちしき</rt></ruby>】<ruby>読書<rt>どくしょ</rt></ruby>（<ruby>本<rt>ほん</rt></ruby>・<ruby>図鑑<rt>ずかん</rt></ruby>）</span>
+      </label>
+      <label class="radio-item">
+        <input type="radio" name="actionCategory" value="休養・自由時間" data-label="休養・自由時間">
+        <span>【<ruby>休養<rt>きゅうよう</rt></ruby>】ゲーム・<ruby>漫画<rt>まんが</rt></ruby>・<ruby>昼寝<rt>ひるね</rt></ruby></span>
+      </label>
+    </div>
+
+    <div class="flex-row">
+      <div style="flex: 1;">
+        <label>▶ <ruby>取<rt>と</rt></ruby>り<ruby>組<rt>く</rt></ruby>んだ<ruby>時間<rt>じかん</rt></ruby></label>
+        <select id="actionTime">
+          <!-- デフォルトを5分間に設定 -->
+          <option value="5" selected>5分間</option>
+          <option value="10">10分間</option>
+          <option value="15">15分間</option>
+          <option value="30">30分間</option>
+          <option value="45">45分間</option>
+          <option value="60">60分以上</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- メモ記載例エリア -->
+    <label>▶ <ruby>詳<rt>くわ</rt></ruby>しい<ruby>内容<rt>ないよう</rt></ruby>（メモ）</label>
+    <div class="example-box">
+      <ruby>例<rt>れい</rt></ruby>：<ruby>漢字<rt>かんじ</rt></ruby>ドリル／<ruby>皿洗<rt>さらあら</rt></ruby>い／<ruby>走<rt>はし</rt></ruby>り<ruby>込<rt>こ</rt></ruby>み
+    </div>
+    <input type="text" id="actionDetail" placeholder="なにをしたか入力してね">
+
+    <button class="rpg-btn" id="powerUpBtn" onclick="executePowerUp()" disabled>⚔️ パワーアップ！</button>
+  </div>
+
+  <!-- メッセージ表示エリア -->
+  <div class="msg-box" id="msgBox">
+    <div class="msg-title" id="msgTitle">★ <ruby>判定<rt>はんてい</rt></ruby><ruby>結果<rt>けっか</rt></ruby></div>
+    <div class="skill-name" id="skillName"></div>
+    <div id="msgContent"></div>
+  </div>
+
+  <!-- 履歴 -->
+  <div class="history-box">
+    <div class="history-title">
+      <span>📜 ぼうけんの<ruby>記録<rt>きろく</rt></ruby></span>
+      <span id="historyCount"></span>
+    </div>
+    <div class="history-list" id="historyList">
+      <div class="history-empty">まだ<ruby>記録<rt>きろく</rt></ruby>がありません</div>
+    </div>
+  </div>
+
+  <!-- データリセットボタン -->
+  <div class="settings-box">
+    <button class="sub-btn" style="width: 100%;" onclick="resetHero()">🔄 このヒーローのデータをリセット</button>
+  </div>
+
+</div>
+
+<script>
+  const canvas = document.getElementById('characterCanvas');
+  const ctx = canvas.getContext('2d');
+
+  // 暗証番号（361）
+  const PARENT_PIN = "361";
+
+  let state = {
+    power: 0,
+    history: [],
+    parentLock: false,        // false: 無制限, true: 各カテゴリ2回まで
+    categoryCounts: {},       // 本日のカテゴリ別実行回数
+    lastPlayDate: "",         // YYYY-MM-DD
+    lastSkill: "",            // 連続防止用
+    lastMsg: ""               // 連続防止用
+  };
+
+  let currentHeroKey = null;
+  let currentLevel = 1;
+
+  function getTodayStr() {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  }
+
+  // ── ステージ背景 ─────────────
+  const SCENE_NAMES = [
+    "<ruby>村<rt>むら</rt></ruby>はずれ",
+    "<ruby>町<rt>まち</rt></ruby>なか",
+    "<ruby>森<rt>もり</rt></ruby>の<ruby>入口<rt>いりぐち</rt></ruby>",
+    "<ruby>深<rt>ふか</rt></ruby>い<ruby>森<rt>もり</rt></ruby>",
+    "<ruby>山道<rt>やまみち</rt></ruby>",
+    "<ruby>洞窟<rt>どうくつ</rt></ruby>",
+    "<ruby>城下町<rt>じょうかまち</rt></ruby>",
+    "<ruby>王<rt>おう</rt></ruby>の<ruby>城<rt>しろ</rt></ruby>"
+  ];
+  const horizon = 100;
+
+  function drawCloud(x, y) {
+    ctx.beginPath();
+    ctx.arc(x, y, 8, 0, Math.PI * 2);
+    ctx.arc(x + 10, y - 4, 10, 0, Math.PI * 2);
+    ctx.arc(x + 20, y, 8, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  function drawHouse(x, y, w, h, wallColor, roofColor) {
+    ctx.fillStyle = wallColor;
+    ctx.fillRect(x, y, w, h);
+    ctx.fillStyle = roofColor;
+    ctx.beginPath();
+    ctx.moveTo(x - 4, y);
+    ctx.lineTo(x + w / 2, y - 14);
+    ctx.lineTo(x + w + 4, y);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  function drawTree(x, groundY, size) {
+    ctx.fillStyle = "#5a3a22";
+    ctx.fillRect(x + size * 0.4, groundY - size * 0.3, size * 0.2, size * 0.3);
+    ctx.fillStyle = "#2e6b3e";
+    ctx.beginPath();
+    ctx.moveTo(x, groundY - size * 0.3);
+    ctx.lineTo(x + size * 0.5, groundY - size * 1.1);
+    ctx.lineTo(x + size, groundY - size * 0.3);
+    ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(x + size * 0.12, groundY - size * 0.6);
+    ctx.lineTo(x + size * 0.5, groundY - size * 1.4);
+    ctx.lineTo(x + size * 0.88, groundY - size * 0.6);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  function drawStalactite(x, len) {
+    ctx.fillStyle = "#45454f";
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x + 10, 0);
+    ctx.lineTo(x + 5, len);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  function drawCrystal(x, y, color) {
+    ctx.save();
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 8;
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(x, y - 10);
+    ctx.lineTo(x + 6, y);
+    ctx.lineTo(x, y + 10);
+    ctx.lineTo(x - 6, y);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawCastleTower(x, y, w, h, color) {
+    ctx.fillStyle = color;
+    ctx.fillRect(x, y, w, h);
+    ctx.fillStyle = "#d4af37";
+    ctx.fillRect(x - 2, y - 10, w + 4, 10);
+    ctx.fillStyle = "#c0392b";
+    ctx.beginPath();
+    ctx.moveTo(x + w / 2, y - 24);
+    ctx.lineTo(x + w / 2, y - 10);
+    ctx.lineTo(x + w / 2 + 14, y - 16);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  function drawMountain(baseX, baseY, w, h, color) {
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(baseX, baseY);
+    ctx.lineTo(baseX + w / 2, baseY - h);
+    ctx.lineTo(baseX + w, baseY);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = "#ffffff";
+    ctx.beginPath();
+    ctx.moveTo(baseX + w / 2 - 8, baseY - h + 14);
+    ctx.lineTo(baseX + w / 2, baseY - h);
+    ctx.lineTo(baseX + w / 2 + 8, baseY - h + 14);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  function drawBackground(level) {
+    const w = canvas.width, h = canvas.height;
+    ctx.clearRect(0, 0, w, h);
+
+    if (level === 1) {
+      const g = ctx.createLinearGradient(0, 0, 0, horizon);
+      g.addColorStop(0, "#6ec6ff"); g.addColorStop(1, "#cdeeff");
+      ctx.fillStyle = g; ctx.fillRect(0, 0, w, horizon);
+      ctx.fillStyle = "#ffffff";
+      drawCloud(40, 22); drawCloud(150, 16); drawCloud(230, 30);
+      ctx.fillStyle = "#5cb85c";
+      ctx.fillRect(0, horizon, w, h - horizon);
+      drawHouse(232, horizon - 26, 26, 26, "#d98c4a", "#8b3a2f");
+    } else if (level === 2) {
+      const g = ctx.createLinearGradient(0, 0, 0, horizon);
+      g.addColorStop(0, "#ffb870"); g.addColorStop(1, "#ffe1b0");
+      ctx.fillStyle = g; ctx.fillRect(0, 0, w, horizon);
+      ctx.fillStyle = "#b8ae9c";
+      ctx.fillRect(0, horizon, w, h - horizon);
+      ctx.fillStyle = "#8f8574";
+      ctx.fillRect(0, horizon + 20, w, 6);
+      const houseColors = [["#e0a458", "#8c4a2f"], ["#c9d6df", "#5c6b73"], ["#e3b7a0", "#7a4a3a"]];
+      let hx = 6;
+      for (let i = 0; i < 4; i++) {
+        const [wall, roof] = houseColors[i % houseColors.length];
+        drawHouse(hx, horizon - 24, 26, 26, wall, roof);
+        hx += 72;
+      }
+    } else if (level === 3) {
+      const g = ctx.createLinearGradient(0, 0, 0, horizon);
+      g.addColorStop(0, "#8fd6a0"); g.addColorStop(1, "#c7ecc9");
+      ctx.fillStyle = g; ctx.fillRect(0, 0, w, horizon);
+      ctx.fillStyle = "#3f9a4e";
+      ctx.fillRect(0, horizon, w, h - horizon);
+      [20, 110, 200, 260].forEach((x, i) => drawTree(x, horizon - 4, 26));
+    } else if (level === 4) {
+      const g = ctx.createLinearGradient(0, 0, 0, horizon);
+      g.addColorStop(0, "#1c3a30"); g.addColorStop(1, "#335c46");
+      ctx.fillStyle = g; ctx.fillRect(0, 0, w, horizon);
+      ctx.fillStyle = "#132a1c";
+      ctx.fillRect(0, horizon, w, h - horizon);
+      [4, 34, 64, 96, 128, 158, 190, 220, 250, 275].forEach((x, i) => drawTree(x, horizon - 2, i % 2 === 0 ? 36 : 28));
+    } else if (level === 5) {
+      const g = ctx.createLinearGradient(0, 0, 0, horizon);
+      g.addColorStop(0, "#8fb8e6"); g.addColorStop(1, "#e6d3b3");
+      ctx.fillStyle = g; ctx.fillRect(0, 0, w, horizon);
+      drawMountain(-10, horizon, 140, 60, "#7c93a8");
+      drawMountain(110, horizon, 150, 76, "#647d94");
+      drawMountain(220, horizon, 120, 54, "#8393a4");
+      ctx.fillStyle = "#a99274";
+      ctx.fillRect(0, horizon, w, h - horizon);
+      ctx.fillStyle = "#c8b494";
+      ctx.fillRect(0, horizon + 16, w, 8);
+    } else if (level === 6) {
+      ctx.fillStyle = "#14141f";
+      ctx.fillRect(0, 0, w, horizon);
+      ctx.fillStyle = "#33333d";
+      ctx.fillRect(0, horizon, w, h - horizon);
+      [20, 60, 100, 150, 190, 230, 260].forEach((x, i) => drawStalactite(x, i % 2 === 0 ? 26 : 16));
+      drawCrystal(70, horizon - 4, "#66e0ff");
+      drawCrystal(180, horizon - 2, "#c77dff");
+      drawCrystal(230, horizon - 6, "#66e0ff");
+    } else if (level === 7) {
+      const g = ctx.createLinearGradient(0, 0, 0, horizon);
+      g.addColorStop(0, "#6a4a8a"); g.addColorStop(1, "#e0a8c0");
+      ctx.fillStyle = g; ctx.fillRect(0, 0, w, horizon);
+      ctx.fillStyle = "#7a7a8c";
+      ctx.fillRect(0, horizon - 30, w, 30);
+      drawCastleTower(6, horizon - 60, 22, 60, "#8a8a9a");
+      drawCastleTower(260, horizon - 60, 22, 60, "#8a8a9a");
+      ctx.fillStyle = "#b8ae9c";
+      ctx.fillRect(0, horizon, w, h - horizon);
+      const houseColors = [["#e0a458", "#8c4a2f"], ["#c9a0d8", "#5c3a6b"]];
+      let hx2 = 30;
+      for (let i = 0; i < 3; i++) {
+        const [wall, roof] = houseColors[i % houseColors.length];
+        drawHouse(hx2, horizon - 22, 22, 22, wall, roof);
+        hx2 += 80;
+      }
+    } else {
+      const g = ctx.createLinearGradient(0, 0, 0, horizon);
+      g.addColorStop(0, "#2b1055"); g.addColorStop(1, "#6a2e6f");
+      ctx.fillStyle = g; ctx.fillRect(0, 0, w, horizon);
+      ctx.fillStyle = "#7a1f2b";
+      ctx.fillRect(0, horizon, w, h - horizon);
+      ctx.fillStyle = "#d4af37";
+      ctx.fillRect(0, horizon, w, 4);
+      drawCastleTower(16, horizon - 50, 26, 50, "#8a8a9a");
+      drawCastleTower(246, horizon - 50, 26, 50, "#8a8a9a");
+      ctx.fillStyle = "#5c5c6e";
+      ctx.fillRect(66, horizon - 34, 156, 34);
+      ctx.fillStyle = "#3a3a48";
+      ctx.fillRect(130, horizon - 20, 28, 20);
+    }
+  }
+
+  function drawGoalMarker() {
+    const gx = WALK_MAX_X + 16 * SPRITE_P + 4;
+    ctx.fillStyle = "#5a3a22";
+    ctx.fillRect(gx, horizon - 38, 4, 38);
+    ctx.fillStyle = "#ffcc00";
+    ctx.beginPath();
+    ctx.moveTo(gx + 4, horizon - 38);
+    ctx.lineTo(gx + 18, horizon - 32);
+    ctx.lineTo(gx + 4, horizon - 26);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // ── レベル閾値 ─────────────
+  const LEVEL_THRESHOLDS = [0, 40, 100, 190, 320, 500, 730, 1020];
+
+  function levelFromPower(p) {
+    let lvl = 1;
+    for (let i = 1; i < LEVEL_THRESHOLDS.length; i++) {
+      if (p >= LEVEL_THRESHOLDS[i]) lvl = i + 1;
+    }
+    return lvl;
+  }
+
+  // ── スプライト描画 ─────────────────
+  function getPalette(level) {
+    // LV.8のスーツ色を赤マントと同化しないロイヤルブルー (#2563eb) に変更
+    const suitByLevel = ["#33cc33", "#2ea86e", "#00cc99", "#00a8c0", "#0066ff", "#5b3df5", "#aa00ff", "#2563eb"];
+    const armorByLevel = ["#999999", "#aaaaaa", "#bfbfbf", "#c9b37f", "#d4af37", "#e0c040", "#ffd700", "#ffd700"];
+    const capeByLevel = [null, null, null, null, null, "#aa00ff", "#c724a8", "#ff0055"];
+    return { suit: suitByLevel[level - 1], armor: armorByLevel[level - 1], cape: capeByLevel[level - 1] };
+  }
+
+  const BASE_SPRITE = [
+    "................", ".....HHHHHH.....", "....HHHHHHHH....", "....SSSSSSSS....",
+    "....SSESSSES....", "....SSSSSSSS....", ".....SMMMM......", "....AAASSAAA....",
+    "...AAAASSSAAA...", "...A.LLLLLL.A...", ".....LLLLLL.....", ".....LLLLLL....."
+  ];
+  const LEG_FRAMES = [
+    [".....LL..LL.....", ".....LL..LL.....", "....BBB..BBB...."],
+    ["....LL....LL....", "....LL....LL....", "...BBB....BBB..."]
+  ];
+
+  function drawSprite(level, ox, oy, p, legFrame, mirrored) {
+    const pal = getPalette(level);
+    const c = {
+      skin: "#ffcc99", hair: "#663300", eye: "#000000",
+      suit: pal.suit, armor: pal.armor, cape: pal.cape,
+      boots: "#4a2c17", sword: "#ffffff", gold: "#ffcc00"
+    };
+    const sprite = BASE_SPRITE.concat(LEG_FRAMES[legFrame % 2], ["................"]);
+
+    ctx.save();
+    ctx.translate(ox, oy);
+    if (mirrored) {
+      ctx.translate(16 * p, 0);
+      ctx.scale(-1, 1);
+    }
+
+    if (level >= 8) {
+      ctx.save();
+      ctx.globalAlpha = 0.55;
+      ctx.fillStyle = c.gold;
+      ctx.beginPath();
+      ctx.arc(8 * p, 8 * p, 9 * p, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    if (c.cape) {
+      ctx.fillStyle = c.cape;
+      ctx.beginPath();
+      ctx.moveTo(3 * p, 6 * p);
+      ctx.lineTo(13 * p, 6 * p);
+      ctx.lineTo(15 * p, 14.5 * p);
+      ctx.lineTo(1 * p, 14.5 * p);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    for (let r = 0; r < 16; r++) {
+      for (let col = 0; col < 16; col++) {
+        const char = sprite[r][col];
+        if (char === ".") continue;
+        if (char === "H") ctx.fillStyle = c.hair;
+        if (char === "S") ctx.fillStyle = c.skin;
+        if (char === "E") ctx.fillStyle = c.eye;
+        if (char === "M") ctx.fillStyle = "#ff6666";
+        if (char === "A") ctx.fillStyle = c.armor;
+        if (char === "L") ctx.fillStyle = c.suit;
+        if (char === "B") ctx.fillStyle = c.boots;
+        ctx.fillRect(col * p, r * p, p, p);
+      }
+    }
+
+    if (level >= 2) {
+      ctx.fillStyle = c.sword;
+      ctx.fillRect(12 * p, 4 * p, 2 * p, 8 * p);
+      ctx.fillStyle = c.gold;
+      ctx.fillRect(11 * p, 8 * p, 4 * p, 2 * p);
+    }
+
+    if (level >= 8) {
+      ctx.fillStyle = c.gold;
+      ctx.fillRect(5 * p, 0, p, p * 0.6);
+      ctx.fillRect(7 * p, 0, p, p * 0.6);
+      ctx.fillRect(9 * p, 0, p, p * 0.6);
+    }
+
+    ctx.restore();
+  }
+
+  // ── アニメーション ──
+  const SPRITE_P = 5;
+  const WALK_MIN_X = 20;
+  const WALK_MAX_X = canvas.width - 24 - 16 * SPRITE_P;
+  const WALK_SPEED = 55;
+  let walkX = WALK_MIN_X;
+  let targetX = WALK_MIN_X;
+  let legFrame = 0;
+  let legToggleAccum = 0;
+  let lastFrameTs = 0;
+  let bounceStart = null;
+  let bounceDuration = 0;
+  let loopStarted = false;
+
+  function triggerBounce(duration) {
+    bounceStart = performance.now();
+    bounceDuration = duration;
+  }
+
+  function progressRatio() {
+    const lvl = currentLevel;
+    if (lvl >= 8) return 1;
+    const lower = LEVEL_THRESHOLDS[lvl - 1];
+    const upper = LEVEL_THRESHOLDS[lvl];
+    return Math.max(0, Math.min(1, (state.power - lower) / (upper - lower)));
+  }
+
+  function updateTargetX() {
+    targetX = WALK_MIN_X + progressRatio() * (WALK_MAX_X - WALK_MIN_X);
+  }
+
+  function updateXpUI() {
+    const fill = document.getElementById('xpBarFill');
+    const label = document.getElementById('xpLabel');
+    if (currentLevel >= 8) {
+      fill.style.width = '100%';
+      label.innerHTML = 'でんせつのヒーローに<ruby>到達<rt>とうたつ</rt></ruby>！';
+    } else {
+      const upper = LEVEL_THRESHOLDS[currentLevel];
+      fill.innerHTML = `つぎのレベルまで あと ${Math.max(0, upper - state.power)} pt`;
+      label.innerHTML = `つぎのレベルまで あと ${Math.max(0, upper - state.power)} pt`;
+    }
+  }
+
+  function renderLoop(ts) {
+    if (!lastFrameTs) lastFrameTs = ts;
+    const dt = ts - lastFrameTs;
+    lastFrameTs = ts;
+
+    if (Math.abs(targetX - walkX) > 0.5) {
+      const step = WALK_SPEED * (dt / 1000);
+      walkX = (targetX > walkX) ? Math.min(targetX, walkX + step) : Math.max(targetX, walkX - step);
+      legToggleAccum += dt;
+      if (legToggleAccum > 140) { legFrame = legFrame === 0 ? 1 : 0; legToggleAccum = 0; }
+    } else {
+      walkX = targetX;
+      legFrame = 0;
+    }
+
+    let bounceOffset = 0;
+    if (bounceStart !== null) {
+      const elapsed = ts - bounceStart;
+      if (elapsed < bounceDuration) {
+        bounceOffset = -Math.abs(Math.sin((elapsed / bounceDuration) * Math.PI)) * 14;
+      } else {
+        bounceStart = null;
+      }
+    }
+
+    drawBackground(currentLevel);
+    drawGoalMarker();
+    const spriteY = horizon - 16 * SPRITE_P + bounceOffset;
+    drawSprite(currentLevel, walkX, spriteY, SPRITE_P, legFrame, false);
+
+    requestAnimationFrame(renderLoop);
+  }
+
+  function startAnimationLoop() {
+    if (loopStarted) return;
+    loopStarted = true;
+    requestAnimationFrame(renderLoop);
+  }
+
+  function updateTitle(lvl) {
+    const titles = [
+      "LV.1 <ruby>見習<rt>みなら</rt></ruby>い<ruby>勇者<rt>ゆうしゃ</rt></ruby>",
+      "LV.2 かけだし<ruby>戦士<rt>せんし</rt></ruby>",
+      "LV.3 もりの<ruby>狩人<rt>かりうど</rt></ruby>",
+      "LV.4 <ruby>森<rt>もり</rt></ruby>の<ruby>賢者<rt>けんじゃ</rt></ruby>",
+      "LV.5 <ruby>山<rt>やま</rt></ruby>の<ruby>探検家<rt>たんけんか</rt></ruby>",
+      "LV.6 <ruby>洞窟<rt>どうくつ</rt></ruby>の<ruby>勇士<rt>ゆうし</rt></ruby>",
+      "LV.7 <ruby>王国<rt>おうこく</rt></ruby><ruby>騎士<rt>きし</rt></ruby>",
+      "LV.8 でんせつのヒーロー"
+    ];
+    document.getElementById('heroTitle').innerHTML = titles[lvl - 1] + `（${SCENE_NAMES[lvl - 1]}）`;
+  }
+
+  function play8BitSound(isHigh) {
+    try {
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'square';
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      const now = audioCtx.currentTime;
+      if (isHigh) {
+        osc.frequency.setValueAtTime(440, now);
+        osc.frequency.setValueAtTime(554.37, now + 0.1);
+        osc.frequency.setValueAtTime(659.25, now + 0.2);
+        osc.frequency.setValueAtTime(880, now + 0.3);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.6);
+        osc.start(now);
+        osc.stop(now + 0.6);
+      } else {
+        osc.frequency.setValueAtTime(200, now);
+        osc.frequency.setValueAtTime(150, now + 0.15);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+        osc.start(now);
+        osc.stop(now + 0.3);
+      }
+    } catch(e) {}
+  }
+
+  function renderHistory() {
+    const list = document.getElementById('historyList');
+    const count = document.getElementById('historyCount');
+    const entries = state.history.slice(0, 8);
+    count.innerHTML = state.history.length > 0 ? `<ruby>全<rt>ぜん</rt></ruby>${state.history.length}<ruby>件<rt>けん</rt></ruby>` : '';
+    if (entries.length === 0) {
+      list.innerHTML = '<div class="history-empty">まだ<ruby>記録<rt>きろく</rt></ruby>がありません</div>';
+      return;
+    }
+    list.innerHTML = entries.map(e => `
+      <div class="history-entry">
+        <span>${e.label}</span>
+        <span class="history-pt">+${e.bonus}PT</span>
+      </div>
+    `).join('');
+  }
+
+  // ── 保護者制限 UI更新 ──────────────────────
+  function updateParentLockUI() {
+    const today = getTodayStr();
+    if (state.lastPlayDate !== today) {
+      state.categoryCounts = {};
+      state.lastPlayDate = today;
+    }
+
+    const lockStatusEl = document.getElementById('lockStatus');
+    const btn = document.getElementById('powerUpBtn');
+
+    if (!state.parentLock) {
+      lockStatusEl.innerHTML = "🔓 プレイ<ruby>制限<rt>せいげん</rt></ruby>: <ruby>無制限<rt>むせいげん</rt></ruby>";
+    } else {
+      lockStatusEl.innerHTML = "🔒 プレイ<ruby>制限<rt>せいげん</rt></ruby>: <ruby>各<rt>かく</rt></ruby>カテゴリ2<ruby>回<rt>かい</rt></ruby>まで";
+    }
+    btn.disabled = false;
+  }
+
+  // 暗証番号入力のみでトグル切り替え
+  function toggleParentControl() {
+    const inputPin = prompt(`【保護者確認】暗証番号を入力してください。`);
+    if (inputPin === PARENT_PIN) {
+      state.parentLock = !state.parentLock;
+      const nextModeText = state.parentLock ? "「各カテゴリ2回まで」" : "「無制限」";
+      alert(`プレイ制限を ${nextModeText} に切り替えました。`);
+      updateParentLockUI();
+      saveHero();
+    } else if (inputPin !== null) {
+      alert("暗証番号が違います。");
+    }
+  }
+
+  function heroStorageKey(name) {
+    return 'hero:' + name.trim();
+  }
+
+  const hasClaudeStorage = typeof window.storage !== 'undefined';
+
+  async function storageGet(key) {
+    if (hasClaudeStorage) {
+      try {
+        const result = await window.storage.get(key, false);
+        return result ? result.value : null;
+      } catch (e) { return null; }
+    }
+    try { return localStorage.getItem(key); } catch (e) { return null; }
+  }
+
+  async function storageSet(key, value) {
+    if (hasClaudeStorage) {
+      try { await window.storage.set(key, value, false); } catch (e) {}
+      return;
+    }
+    try { localStorage.setItem(key, value); } catch (e) {}
+  }
+
+  async function storageDelete(key) {
+    if (hasClaudeStorage) {
+      try { await window.storage.delete(key, false); } catch (e) {}
+      return;
+    }
+    try { localStorage.removeItem(key); } catch (e) {}
+  }
+
+  async function loadHero() {
+    const nameInput = document.getElementById('heroName');
+    const name = nameInput.value.trim() || 'ヒーロー';
+    const key = heroStorageKey(name);
+    document.getElementById('loadingNote').style.display = 'block';
+    document.getElementById('powerUpBtn').disabled = true;
+
+    try {
+      const value = await storageGet(key);
+      if (value) {
+        const parsed = JSON.parse(value);
+        state = {
+          power: parsed.power || 0,
+          history: parsed.history || [],
+          parentLock: parsed.parentLock !== undefined ? parsed.parentLock : false,
+          categoryCounts: parsed.categoryCounts || {},
+          lastPlayDate: parsed.lastPlayDate || getTodayStr(),
+          lastSkill: parsed.lastSkill || "",
+          lastMsg: parsed.lastMsg || ""
+        };
+      } else {
+        state = { power: 0, history: [], parentLock: false, categoryCounts: {}, lastPlayDate: getTodayStr(), lastSkill: "", lastMsg: "" };
+      }
+    } catch (e) {
+      state = { power: 0, history: [], parentLock: false, categoryCounts: {}, lastPlayDate: getTodayStr(), lastSkill: "", lastMsg: "" };
+    }
+
+    currentHeroKey = key;
+    currentLevel = levelFromPower(state.power);
+    document.getElementById('todayPower').textContent = state.power;
+    document.getElementById('yesterdayPower').textContent = state.power;
+    updateTitle(currentLevel);
+    updateXpUI();
+    walkX = WALK_MIN_X;
+    updateTargetX();
+    startAnimationLoop();
+    renderHistory();
+    updateParentLockUI();
+    document.getElementById('loadingNote').style.display = 'none';
+  }
+
+  async function saveHero() {
+    if (!currentHeroKey) return;
+    await storageSet(currentHeroKey, JSON.stringify(state));
+  }
+
+  async function resetHero() {
+    if (!currentHeroKey) return;
+    if (!confirm('このヒーローの記録をすべて消しますか？')) return;
+    await storageDelete(currentHeroKey);
+    await loadHero();
+  }
+
+  // ── メッセージ生成 ─────────────────────────
+  function getRandomMessage(isRest, name, category, detail, timeMinutes) {
+    const detailStr = detail ? `（${detail}）` : "";
+    let msgPool = [];
+    
+    if (isRest) {
+      msgPool = [
+        `【<ruby>評価<rt>ひょうか</rt></ruby>】${timeMinutes}<ruby>分間<rt>ふんかん</rt></ruby>しっかりリフレッシュ！「${detail || "自由時間"}」でMPを<ruby>回復<rt>かいふく</rt></ruby>したぞ。でも<ruby>昨日<rt>きのう</rt></ruby>の<ruby>自分<rt>じぶん</rt></ruby>を<ruby>越<rt>こ</rt></ruby>えるには、<ruby>明日<rt>あした</rt></ruby>は<ruby>勉強<rt>べんきょう</rt></ruby>やお<ruby>手伝<rt>てつだ</rt></ruby>いに<ruby>挑戦<rt>ちょうせん</rt></ruby>だ！`,
+        `【<ruby>評価<rt>ひょうか</rt></ruby>】<ruby>休<rt>やす</rt></ruby>むのも<ruby>勇者<rt>ゆうしゃ</rt></ruby>の<ruby>大事<rt>だいじ</rt></ruby>な<ruby>仕事<rt>しごと</rt></ruby>！「${detail || "自由時間"}」でパワーを<ruby>溜<rt>た</rt></ruby>めたぞ。<ruby>次<rt>つぎ</rt></ruby>はメラメラ<ruby>燃<rt>も</rt></ruby>える<ruby>情熱<rt>じょうねつ</rt></ruby>で<ruby>学習<rt>がくしゅう</rt></ruby>や<ruby>運動<rt>うんどう</rt></ruby>にチャレンジだ！`,
+        `【<ruby>評価<rt>ひょうか</rt></ruby>】しっかり<ruby>休憩<rt>きゅうけい</rt></ruby>して<ruby>体力<rt>たいりょく</rt></ruby>マンタン！ゲームやテレビもいいけれど、<ruby>明日<rt>あした</rt></ruby>は<ruby>宿題<rt>しゅくだい</rt></ruby>やお<ruby>仕事<rt>しごと</rt></ruby>でパワーを<ruby>爆発<rt>ばくはつ</rt></ruby>させよう！`,
+        `【<ruby>評価<rt>ひょうか</rt></ruby>】リラックスタイム<ruby>完了<rt>かんりょう</rt></ruby>！のんびり<ruby>過<rt>す</rt></ruby>ごしてHP<ruby>回復<rt>かいふく</rt></ruby>だ。<ruby>明日<rt>あした</rt></ruby>からはまた<ruby>攻<rt>せ</rt></ruby>めの<ruby>姿勢<rt>しせい</rt></ruby>で「<ruby>昨日<rt>きのう</rt></ruby>の<ruby>自分<rt>じぶん</rt></ruby>」に<ruby>挑<rt>いど</rt></ruby>もう！`
+      ];
+    } else {
+      msgPool = [
+        `【<ruby>評価<rt>ひょうか</rt></ruby>】${timeMinutes}<ruby>分間<rt>ふんかん</rt></ruby>、<ruby>集中<rt>しゅうちゅう</rt></ruby>して「${category}${detailStr}」に<ruby>取<rt>と</rt></ruby>り<ruby>組<rt>く</rt></ruby>んだ！${name}の<ruby>頑張<rt>がんば</rt></ruby>りによって、<ruby>昨日<rt>きのう</rt></ruby>の<ruby>自分<rt>じぶん</rt></ruby>を<ruby>見事<rt>みごと</rt></ruby>に<ruby>突破<rt>とっぱ</rt></ruby>したぞ！`,
+        `【<ruby>評価<rt>ひょうか</rt></ruby>】すさまじい<ruby>集中力<rt>しゅうちゅうりょく</rt></ruby>だ！${timeMinutes}<ruby>分間<rt>ふんかん</rt></ruby>の「${category}${detailStr}」で${name}の<ruby>攻撃力<rt>こうげきりょく</rt></ruby>が<ruby>大幅<rt>おおはば</rt></ruby>アップ！その<ruby>調子<rt>ちょうし</rt></ruby>で<ruby>突き進<rt>つきすす</rt></ruby>め！`,
+        `【<ruby>評価<rt>ひょうか</rt></ruby>】<ruby>素晴<rt>すば</rt></ruby>らしい<ruby>継続力<rt>けいぞくりょく</rt></ruby>！${timeMinutes}<ruby>分間<rt>ふんかん</rt></ruby>の<ruby>努力<rt>どりょく</rt></ruby>「${category}${detailStr}」がヒーローの<ruby>大<rt>おお</rt></ruby>きな<ruby>糧<rt>かて</rt></ruby>となった！<ruby>昨日<rt>きのう</rt></ruby>の<ruby>自分<rt>じぶん</rt></ruby>を<ruby>越<rt>こ</rt></ruby>えて<ruby>新<rt>あたら</rt></ruby>たな<ruby>高<rt>たか</rt></ruby>みへ！`,
+        `【<ruby>評価<rt>ひょうか</rt></ruby>】<ruby>伝説<rt>でんせつ</rt></ruby>の<ruby>勇者<rt>ゆうしゃ</rt></ruby>への<ruby>第一歩<rt>だいいっぽ</rt></ruby>！${timeMinutes}<ruby>分間<rt>ふんかん</rt></ruby>じっくり「${category}${detailStr}」をやり<ruby>遂<rt>と</rt></ruby>げたぞ！${name}の<ruby>成長<rt>せいちょう</rt></ruby>スピードは<ruby>誰<rt>だれ</rt></ruby>にも<ruby>止<rt>と</rt></ruby>められない！`
+      ];
+    }
+
+    let availableMsgs = msgPool.filter(m => m !== state.lastMsg);
+    if (availableMsgs.length === 0) availableMsgs = msgPool;
+    const selectedMsg = availableMsgs[Math.floor(Math.random() * availableMsgs.length)];
+    state.lastMsg = selectedMsg;
+    return selectedMsg;
+  }
+
+  async function executePowerUp() {
+    const today = getTodayStr();
+    if (state.lastPlayDate !== today) {
+      state.categoryCounts = {};
+      state.lastPlayDate = today;
+    }
+
+    const selectedRadio = document.querySelector('input[name="actionCategory"]:checked');
+    const category = selectedRadio ? selectedRadio.value : "宿題・勉強";
+
+    const catRubyNames = {
+      "宿題・勉強": "「【<ruby>学習<rt>がくしゅう</rt></ruby>】<ruby>宿題<rt>しゅくだい</rt></ruby>・<ruby>勉強<rt>べんきょう</rt></ruby>・<ruby>習<rt>なら</rt></ruby>い<ruby>事<rt>ごと</rt></ruby>」",
+      "お手伝い": "「【<ruby>貢献<rt>こうけん</rt></ruby>】お<ruby>手伝<rt>てつだ</rt></ruby>い・<ruby>掃除<rt>そうじ</rt></ruby>」",
+      "運動・健康": "「【<ruby>体力<rt>たいりょく</rt></ruby>】<ruby>運動<rt>うんどう</rt></ruby>・スポーツ・<ruby>早<rt>はや</rt></ruby><ruby>起<rt>お</rt></ruby>き」",
+      "読書": "「【<ruby>知識<rt>ちしき</rt></ruby>】<ruby>読書<rt>どくしょ</rt></ruby>」",
+      "休養・自由時間": "「【<ruby>休養<rt>きゅうよう</rt></ruby>】ゲーム・<ruby>漫画<rt>まんが</rt></ruby>・<ruby>昼寝<rt>ひるね</rt></ruby>」"
+    };
+
+    const msgBox = document.getElementById('msgBox');
+    const msgTitle = document.getElementById('msgTitle');
+
+    if (state.parentLock) {
+      const currentCount = state.categoryCounts[category] || 0;
+      if (currentCount >= 2) {
+        // 回数制限時のおしらせ：枠線・タイトル文字ともに赤色強調
+        msgBox.style.borderColor = "#ff4d4d";
+        msgTitle.style.color = "#ff4d4d";
+        msgTitle.innerHTML = "⚠️ <ruby>回数<rt>かいすう</rt></ruby><ruby>制限<rt>せいげん</rt></ruby>のおしらせ";
+        document.getElementById('skillName').innerHTML = "";
+        document.getElementById('msgContent').innerHTML = `${catRubyNames[category] || category}は<ruby>本日<rt>ほんじつ</rt></ruby>すでに2<ruby>回<rt>かい</rt></ruby>おこないました。<ruby>他<rt>ほか</rt></ruby>のカテゴリーを<ruby>選<rt>えら</rt></ruby>ぶか、<ruby>明日<rt>あした</rt></ruby>また<ruby>挑戦<rt>ちょうせん</rt></ruby>してね！`;
+        msgBox.style.display = 'block';
+        return;
+      }
+    }
+
+    // 通常判定時：スタイルを初期値（白枠・黄文字）に戻す
+    msgBox.style.borderColor = "#ffffff";
+    msgTitle.style.color = "#ffcc00";
+
+    const btn = document.getElementById('powerUpBtn');
+    btn.disabled = true;
+
+    const timeMinutes = parseInt(document.getElementById('actionTime').value) || 5;
+    const detail = document.getElementById('actionDetail').value.trim();
+    const name = document.getElementById('heroName').value || "ヒーロー";
+
+    const text = detail.toLowerCase();
+    const lowKeywords = ["漫画", "マンガ", "まんが", "コミック", "昼寝", "ひるね", "寝た", "ねた", "ごろごろ", "ゴロゴロ", "ゲーム", "テレビ", "さぼ", "サボ", "何もしない", "スマホ", "youtube"];
+    const isLowText = lowKeywords.some(kw => text.includes(kw));
+
+    let bonus = 0;
+    let skill = "";
+    let title = "";
+    let msg = "";
+
+    const yesterdayPwr = state.power;
+    const isRest = (category === "休養・自由時間" || isLowText);
+
+    const skillsMap = {
+      "宿題・勉強": [
+        "<ruby>集中<rt>しゅうちゅう</rt></ruby>ドリル<ruby>斬<rt>ぎ</rt></ruby>り",
+        "ブレイン・スマッシュ",
+        "<ruby>閃光<rt>せんこう</rt></ruby>スタディ・バースト",
+        "<ruby>知恵<rt>ちえ</rt></ruby>のメテオストライク"
+      ],
+      "お手伝い": [
+        "ピカピカクリーンブレイク",
+        "おたすけハリケーン",
+        "サンキュー・エクスプロージョン",
+        "<ruby>奉仕<rt>ほうし</rt></ruby>のホーリーレイ"
+      ],
+      "運動・健康": [
+        "<ruby>爆速<rt>ばくそく</rt></ruby>ダッシュストライク",
+        "マッスル・ボルケーノ",
+        "<ruby>健康<rt>けんこう</rt></ruby>パワースマッシュ",
+        "エナジー・トルネード"
+      ],
+      "読書": [
+        "ナレッジウェーブ",
+        "イマジネーション・ダイブ",
+        "ブック・オブ・ジャッジメント",
+        "<ruby>知能<rt>ちのう</rt></ruby>フレア"
+      ],
+      "休養・自由時間": [
+        "すやすやパワー<ruby>充電<rt>じゅうでん</rt></ruby>",
+        "リラックス・ヒール",
+        "のんびりサンクチュアリ",
+        "まったりオーラ・リカバリー"
+      ]
+    };
+
+    let skillPool = isRest ? skillsMap["休養・自由時間"] : (skillsMap[category] || ["ミライヒーロー<ruby>斬<rt>ぎ</rt></ruby>り", "<ruby>勇気<rt>ゆうき</rt></ruby>の<ruby>一撃<rt>いちげき</rt></ruby>"]);
+    let availableSkills = skillPool.filter(s => s !== state.lastSkill);
+    if (availableSkills.length === 0) availableSkills = skillPool;
+    skill = availableSkills[Math.floor(Math.random() * availableSkills.length)];
+    state.lastSkill = skill;
+
+    if (isRest) {
+      bonus = 2;
+      title = "💤 <ruby>体力<rt>たいりょく</rt></ruby>を<ruby>回復<rt>かいふく</rt></ruby>した！ (+2 PT)";
+      msg = getRandomMessage(true, name, category, detail, timeMinutes);
+      play8BitSound(false);
+    } else {
+      bonus = Math.floor(timeMinutes * 0.45) + 3;
+      title = `🔥 <ruby>昨日<rt>きのう</rt></ruby>の<ruby>自分<rt>じぶん</rt></ruby>を<ruby>越<rt>こ</rt></ruby>えた！ (+${bonus} PT)`;
+      msg = getRandomMessage(false, name, category, detail, timeMinutes);
+      play8BitSound(true);
+    }
+
+    state.categoryCounts[category] = (state.categoryCounts[category] || 0) + 1;
+
+    const newPower = yesterdayPwr + bonus;
+    state.power = newPower;
+
+    const catLabels = {
+      "宿題・勉強": "<ruby>宿題<rt>しゅくだい</rt></ruby>・<ruby>勉強<rt>べんきょう</rt></ruby>",
+      "お手伝い": "お<ruby>手伝<rt>てつだ</rt></ruby>い",
+      "運動・健康": "<ruby>運動<rt>うんどう</rt></ruby>・<ruby>健康<rt>けんこう</rt></ruby>",
+      "読書": "<ruby>読書<rt>どくしょ</rt></ruby>",
+      "休養・自由時間": "<ruby>休養<rt>きゅうよう</rt></ruby>・<ruby>自由時間<rt>じゆうじかん</rt></ruby>"
+    };
+
+    state.history.unshift({
+      label: `${catLabels[category] || category}${detail ? '（' + detail + '）' : ''} / ${timeMinutes}<ruby>分<rt>ふん</rt></ruby>`,
+      bonus: bonus
+    });
+    state.history = state.history.slice(0, 30);
+
+    document.getElementById('todayPower').textContent = newPower;
+    document.getElementById('yesterdayPower').textContent = newPower;
+    msgTitle.innerHTML = title;
+
+    document.getElementById('skillName').innerHTML = `⚔️ ひっさつわざ：「${skill}」`;
+    document.getElementById('msgContent').innerHTML = msg;
+    msgBox.style.display = 'block';
+    renderHistory();
+
+    const stage = document.getElementById('stage');
+    const newLevel = levelFromPower(newPower);
+    const leveledUp = newLevel > currentLevel;
+
+    stage.classList.add(leveledUp ? 'leveling-up' : 'powering-up');
+    triggerBounce(leveledUp ? 1600 : 900);
+    if (leveledUp) {
+      const banner = document.getElementById('levelupBanner');
+      banner.innerHTML = `★ ${SCENE_NAMES[newLevel - 1]}に<ruby>到着<rt>とうちゃく</rt></ruby>！レベルアップ！ ★`;
+      banner.style.display = 'block';
+      banner.style.animation = 'none';
+      void banner.offsetWidth;
+      banner.style.animation = '';
+      walkX = WALK_MIN_X;
+    }
+
+    currentLevel = newLevel;
+    updateTitle(currentLevel);
+    updateXpUI();
+    updateTargetX();
+
+    setTimeout(() => {
+      stage.classList.remove('powering-up');
+      stage.classList.remove('leveling-up');
+    }, leveledUp ? 1600 : 1200);
+
+    await saveHero();
+    updateParentLockUI();
+  }
+
+  document.getElementById('heroName').addEventListener('change', loadHero);
+
+  loadHero();
+</script>
+
+</body>
+</html>
