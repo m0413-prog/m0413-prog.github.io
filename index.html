@@ -279,6 +279,14 @@
       line-height: 1.8;
     }
 
+    .caution-box {
+      font-size: 11px;
+      color: #ff9999;
+      margin-top: -4px;
+      margin-bottom: 10px;
+      padding-left: 4px;
+    }
+
     .flex-row {
       display: flex;
       gap: 8px;
@@ -409,7 +417,7 @@
     <span id="lockStatus">🔓 プレイ<ruby>制限<rt>せいげん</rt></ruby>: <ruby>無制限<rt>むせいげん</rt></ruby></span>
     <button class="parent-btn" onclick="toggleParentControl()">🔒 <ruby>保護者<rt>ほごしゃ</rt></ruby><ruby>設定<rt>せってい</rt></ruby></button>
   </div>
-  
+
   <div class="loading-note" id="loadingNote">セーブデータを<ruby>読<rt>よ</rt></ruby>み<ruby>込<rt>こ</rt></ruby>み<ruby>中<rt>ちゅう</rt></ruby>...</div>
 
   <!-- 固定表示されたステージ画面（Sticky） -->
@@ -483,6 +491,7 @@
       <ruby>例<rt>れい</rt></ruby>：<ruby>漢字<rt>かんじ</rt></ruby>ドリル／<ruby>皿洗<rt>さらあら</rt></ruby>い／<ruby>走<rt>はし</rt></ruby>り<ruby>込<rt>こ</rt></ruby>み
     </div>
     <input type="text" id="actionDetail" placeholder="なにをしたか入力してね">
+    <div class="caution-box">※<ruby>名前<rt>なまえ</rt></ruby>や<ruby>住所<rt>じゅうしょ</rt></ruby>など<ruby>個人情報<rt>こじんじょうほう</rt></ruby>は<ruby>書<rt>か</rt></ruby>かないでね</div>
 
     <button class="rpg-btn" id="powerUpBtn" onclick="executePowerUp()" disabled>⚔️ パワーアップ！</button>
   </div>
@@ -533,9 +542,37 @@
   let currentHeroKey = null;
   let currentLevel = 1;
 
+  // ── ユーティリティ ────────────────────────────────────────
+  function escapeHtml(str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
   function getTodayStr() {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  }
+
+  // 日付をまたいだ場合、todayPowerをyesterdayPowerへ繰り上げる。
+  // loadHero() / executePowerUp() の両方から同じ関数を呼ぶことで、
+  // 「読み込み時に繰り上げたのに保存されず、次の操作でもう一度繰り上がって
+  // 前日の記録が消える」問題を防ぐ。戻り値は「繰り上げが発生したか」。
+  function handleDayRollover() {
+    const today = getTodayStr();
+    if (state.lastPlayDate && state.lastPlayDate !== today) {
+      state.yesterdayPower = state.todayPower;
+      state.todayPower = 0;
+      state.categoryCounts = {};
+      state.lastPlayDate = today;
+      return true;
+    } else if (!state.lastPlayDate) {
+      state.lastPlayDate = today;
+    }
+    return false;
   }
 
   // 背景描画
@@ -551,121 +588,127 @@
   ];
   const horizon = 100;
 
+  // 背景を描くヘルパー関数群は bgTargetCtx に向けて描画する。
+  // renderLoop() から毎フレーム直接呼ぶのではなく、レベルが変わった時だけ
+  // オフスクリーンキャンバス(bgCache)に一度だけ焼き込み、通常フレームでは
+  // それを drawImage するだけにして描画負荷を下げる。
+  let bgTargetCtx = ctx;
+
   function drawCloud(x, y) {
-    ctx.beginPath();
-    ctx.arc(x, y, 8, 0, Math.PI * 2);
-    ctx.arc(x + 10, y - 4, 10, 0, Math.PI * 2);
-    ctx.arc(x + 20, y, 8, 0, Math.PI * 2);
-    ctx.fill();
+    bgTargetCtx.beginPath();
+    bgTargetCtx.arc(x, y, 8, 0, Math.PI * 2);
+    bgTargetCtx.arc(x + 10, y - 4, 10, 0, Math.PI * 2);
+    bgTargetCtx.arc(x + 20, y, 8, 0, Math.PI * 2);
+    bgTargetCtx.fill();
   }
 
   function drawHouse(x, y, w, h, wallColor, roofColor) {
-    ctx.fillStyle = wallColor;
-    ctx.fillRect(x, y, w, h);
-    ctx.fillStyle = roofColor;
-    ctx.beginPath();
-    ctx.moveTo(x - 4, y);
-    ctx.lineTo(x + w / 2, y - 14);
-    ctx.lineTo(x + w + 4, y);
-    ctx.closePath();
-    ctx.fill();
+    bgTargetCtx.fillStyle = wallColor;
+    bgTargetCtx.fillRect(x, y, w, h);
+    bgTargetCtx.fillStyle = roofColor;
+    bgTargetCtx.beginPath();
+    bgTargetCtx.moveTo(x - 4, y);
+    bgTargetCtx.lineTo(x + w / 2, y - 14);
+    bgTargetCtx.lineTo(x + w + 4, y);
+    bgTargetCtx.closePath();
+    bgTargetCtx.fill();
   }
 
   function drawTree(x, groundY, size) {
-    ctx.fillStyle = "#5a3a22";
-    ctx.fillRect(x + size * 0.4, groundY - size * 0.3, size * 0.2, size * 0.3);
-    ctx.fillStyle = "#2e6b3e";
-    ctx.beginPath();
-    ctx.moveTo(x, groundY - size * 0.3);
-    ctx.lineTo(x + size * 0.5, groundY - size * 1.1);
-    ctx.lineTo(x + size, groundY - size * 0.3);
-    ctx.closePath();
-    ctx.fill();
-    ctx.beginPath();
-    ctx.moveTo(x + size * 0.12, groundY - size * 0.6);
-    ctx.lineTo(x + size * 0.5, groundY - size * 1.4);
-    ctx.lineTo(x + size * 0.88, groundY - size * 0.6);
-    ctx.closePath();
-    ctx.fill();
+    bgTargetCtx.fillStyle = "#5a3a22";
+    bgTargetCtx.fillRect(x + size * 0.4, groundY - size * 0.3, size * 0.2, size * 0.3);
+    bgTargetCtx.fillStyle = "#2e6b3e";
+    bgTargetCtx.beginPath();
+    bgTargetCtx.moveTo(x, groundY - size * 0.3);
+    bgTargetCtx.lineTo(x + size * 0.5, groundY - size * 1.1);
+    bgTargetCtx.lineTo(x + size, groundY - size * 0.3);
+    bgTargetCtx.closePath();
+    bgTargetCtx.fill();
+    bgTargetCtx.beginPath();
+    bgTargetCtx.moveTo(x + size * 0.12, groundY - size * 0.6);
+    bgTargetCtx.lineTo(x + size * 0.5, groundY - size * 1.4);
+    bgTargetCtx.lineTo(x + size * 0.88, groundY - size * 0.6);
+    bgTargetCtx.closePath();
+    bgTargetCtx.fill();
   }
 
   function drawStalactite(x, len) {
-    ctx.fillStyle = "#45454f";
-    ctx.beginPath();
-    ctx.moveTo(x, 0);
-    ctx.lineTo(x + 10, 0);
-    ctx.lineTo(x + 5, len);
-    ctx.closePath();
-    ctx.fill();
+    bgTargetCtx.fillStyle = "#45454f";
+    bgTargetCtx.beginPath();
+    bgTargetCtx.moveTo(x, 0);
+    bgTargetCtx.lineTo(x + 10, 0);
+    bgTargetCtx.lineTo(x + 5, len);
+    bgTargetCtx.closePath();
+    bgTargetCtx.fill();
   }
 
   function drawCrystal(x, y, color) {
-    ctx.save();
-    ctx.shadowColor = color;
-    ctx.shadowBlur = 8;
-    ctx.fillStyle = color;
-    ctx.beginPath();
-    ctx.moveTo(x, y - 10);
-    ctx.lineTo(x + 6, y);
-    ctx.lineTo(x, y + 10);
-    ctx.lineTo(x - 6, y);
-    ctx.closePath();
-    ctx.fill();
-    ctx.restore();
+    bgTargetCtx.save();
+    bgTargetCtx.shadowColor = color;
+    bgTargetCtx.shadowBlur = 8;
+    bgTargetCtx.fillStyle = color;
+    bgTargetCtx.beginPath();
+    bgTargetCtx.moveTo(x, y - 10);
+    bgTargetCtx.lineTo(x + 6, y);
+    bgTargetCtx.lineTo(x, y + 10);
+    bgTargetCtx.lineTo(x - 6, y);
+    bgTargetCtx.closePath();
+    bgTargetCtx.fill();
+    bgTargetCtx.restore();
   }
 
   function drawCastleTower(x, y, w, h, color) {
-    ctx.fillStyle = color;
-    ctx.fillRect(x, y, w, h);
-    ctx.fillStyle = "#d4af37";
-    ctx.fillRect(x - 2, y - 10, w + 4, 10);
-    ctx.fillStyle = "#c0392b";
-    ctx.beginPath();
-    ctx.moveTo(x + w / 2, y - 24);
-    ctx.lineTo(x + w / 2, y - 10);
-    ctx.lineTo(x + w / 2 + 14, y - 16);
-    ctx.closePath();
-    ctx.fill();
+    bgTargetCtx.fillStyle = color;
+    bgTargetCtx.fillRect(x, y, w, h);
+    bgTargetCtx.fillStyle = "#d4af37";
+    bgTargetCtx.fillRect(x - 2, y - 10, w + 4, 10);
+    bgTargetCtx.fillStyle = "#c0392b";
+    bgTargetCtx.beginPath();
+    bgTargetCtx.moveTo(x + w / 2, y - 24);
+    bgTargetCtx.lineTo(x + w / 2, y - 10);
+    bgTargetCtx.lineTo(x + w / 2 + 14, y - 16);
+    bgTargetCtx.closePath();
+    bgTargetCtx.fill();
   }
 
   function drawMountain(baseX, baseY, w, h, color) {
-    ctx.fillStyle = color;
-    ctx.beginPath();
-    ctx.moveTo(baseX, baseY);
-    ctx.lineTo(baseX + w / 2, baseY - h);
-    ctx.lineTo(baseX + w, baseY);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = "#ffffff";
-    ctx.beginPath();
-    ctx.moveTo(baseX + w / 2 - 8, baseY - h + 14);
-    ctx.lineTo(baseX + w / 2, baseY - h);
-    ctx.lineTo(baseX + w / 2 + 8, baseY - h + 14);
-    ctx.closePath();
-    ctx.fill();
+    bgTargetCtx.fillStyle = color;
+    bgTargetCtx.beginPath();
+    bgTargetCtx.moveTo(baseX, baseY);
+    bgTargetCtx.lineTo(baseX + w / 2, baseY - h);
+    bgTargetCtx.lineTo(baseX + w, baseY);
+    bgTargetCtx.closePath();
+    bgTargetCtx.fill();
+    bgTargetCtx.fillStyle = "#ffffff";
+    bgTargetCtx.beginPath();
+    bgTargetCtx.moveTo(baseX + w / 2 - 8, baseY - h + 14);
+    bgTargetCtx.lineTo(baseX + w / 2, baseY - h);
+    bgTargetCtx.lineTo(baseX + w / 2 + 8, baseY - h + 14);
+    bgTargetCtx.closePath();
+    bgTargetCtx.fill();
   }
 
   function drawBackground(level) {
     const w = canvas.width, h = canvas.height;
-    ctx.clearRect(0, 0, w, h);
+    bgTargetCtx.clearRect(0, 0, w, h);
 
     if (level === 1) {
-      const g = ctx.createLinearGradient(0, 0, 0, horizon);
+      const g = bgTargetCtx.createLinearGradient(0, 0, 0, horizon);
       g.addColorStop(0, "#6ec6ff"); g.addColorStop(1, "#cdeeff");
-      ctx.fillStyle = g; ctx.fillRect(0, 0, w, horizon);
-      ctx.fillStyle = "#ffffff";
+      bgTargetCtx.fillStyle = g; bgTargetCtx.fillRect(0, 0, w, horizon);
+      bgTargetCtx.fillStyle = "#ffffff";
       drawCloud(40, 22); drawCloud(150, 16); drawCloud(230, 30);
-      ctx.fillStyle = "#5cb85c";
-      ctx.fillRect(0, horizon, w, h - horizon);
+      bgTargetCtx.fillStyle = "#5cb85c";
+      bgTargetCtx.fillRect(0, horizon, w, h - horizon);
       drawHouse(232, horizon - 26, 26, 26, "#d98c4a", "#8b3a2f");
     } else if (level === 2) {
-      const g = ctx.createLinearGradient(0, 0, 0, horizon);
+      const g = bgTargetCtx.createLinearGradient(0, 0, 0, horizon);
       g.addColorStop(0, "#ffb870"); g.addColorStop(1, "#ffe1b0");
-      ctx.fillStyle = g; ctx.fillRect(0, 0, w, horizon);
-      ctx.fillStyle = "#b8ae9c";
-      ctx.fillRect(0, horizon, w, h - horizon);
-      ctx.fillStyle = "#8f8574";
-      ctx.fillRect(0, horizon + 20, w, 6);
+      bgTargetCtx.fillStyle = g; bgTargetCtx.fillRect(0, 0, w, horizon);
+      bgTargetCtx.fillStyle = "#b8ae9c";
+      bgTargetCtx.fillRect(0, horizon, w, h - horizon);
+      bgTargetCtx.fillStyle = "#8f8574";
+      bgTargetCtx.fillRect(0, horizon + 20, w, 6);
       const houseColors = [["#e0a458", "#8c4a2f"], ["#c9d6df", "#5c6b73"], ["#e3b7a0", "#7a4a3a"]];
       let hx = 6;
       for (let i = 0; i < 4; i++) {
@@ -674,49 +717,49 @@
         hx += 72;
       }
     } else if (level === 3) {
-      const g = ctx.createLinearGradient(0, 0, 0, horizon);
+      const g = bgTargetCtx.createLinearGradient(0, 0, 0, horizon);
       g.addColorStop(0, "#8fd6a0"); g.addColorStop(1, "#c7ecc9");
-      ctx.fillStyle = g; ctx.fillRect(0, 0, w, horizon);
-      ctx.fillStyle = "#3f9a4e";
-      ctx.fillRect(0, horizon, w, h - horizon);
+      bgTargetCtx.fillStyle = g; bgTargetCtx.fillRect(0, 0, w, horizon);
+      bgTargetCtx.fillStyle = "#3f9a4e";
+      bgTargetCtx.fillRect(0, horizon, w, h - horizon);
       [20, 110, 200, 260].forEach((x, i) => drawTree(x, horizon - 4, 26));
     } else if (level === 4) {
-      const g = ctx.createLinearGradient(0, 0, 0, horizon);
+      const g = bgTargetCtx.createLinearGradient(0, 0, 0, horizon);
       g.addColorStop(0, "#1c3a30"); g.addColorStop(1, "#335c46");
-      ctx.fillStyle = g; ctx.fillRect(0, 0, w, horizon);
-      ctx.fillStyle = "#132a1c";
-      ctx.fillRect(0, horizon, w, h - horizon);
+      bgTargetCtx.fillStyle = g; bgTargetCtx.fillRect(0, 0, w, horizon);
+      bgTargetCtx.fillStyle = "#132a1c";
+      bgTargetCtx.fillRect(0, horizon, w, h - horizon);
       [4, 34, 64, 96, 128, 158, 190, 220, 250, 275].forEach((x, i) => drawTree(x, horizon - 2, i % 2 === 0 ? 36 : 28));
     } else if (level === 5) {
-      const g = ctx.createLinearGradient(0, 0, 0, horizon);
+      const g = bgTargetCtx.createLinearGradient(0, 0, 0, horizon);
       g.addColorStop(0, "#8fb8e6"); g.addColorStop(1, "#e6d3b3");
-      ctx.fillStyle = g; ctx.fillRect(0, 0, w, horizon);
+      bgTargetCtx.fillStyle = g; bgTargetCtx.fillRect(0, 0, w, horizon);
       drawMountain(-10, horizon, 140, 60, "#7c93a8");
       drawMountain(110, horizon, 150, 76, "#647d94");
       drawMountain(220, horizon, 120, 54, "#8393a4");
-      ctx.fillStyle = "#a99274";
-      ctx.fillRect(0, horizon, w, h - horizon);
-      ctx.fillStyle = "#c8b494";
-      ctx.fillRect(0, horizon + 16, w, 8);
+      bgTargetCtx.fillStyle = "#a99274";
+      bgTargetCtx.fillRect(0, horizon, w, h - horizon);
+      bgTargetCtx.fillStyle = "#c8b494";
+      bgTargetCtx.fillRect(0, horizon + 16, w, 8);
     } else if (level === 6) {
-      ctx.fillStyle = "#14141f";
-      ctx.fillRect(0, 0, w, horizon);
-      ctx.fillStyle = "#33333d";
-      ctx.fillRect(0, horizon, w, h - horizon);
+      bgTargetCtx.fillStyle = "#14141f";
+      bgTargetCtx.fillRect(0, 0, w, horizon);
+      bgTargetCtx.fillStyle = "#33333d";
+      bgTargetCtx.fillRect(0, horizon, w, h - horizon);
       [20, 60, 100, 150, 190, 230, 260].forEach((x, i) => drawStalactite(x, i % 2 === 0 ? 26 : 16));
       drawCrystal(70, horizon - 4, "#66e0ff");
       drawCrystal(180, horizon - 2, "#c77dff");
       drawCrystal(230, horizon - 6, "#66e0ff");
     } else if (level === 7) {
-      const g = ctx.createLinearGradient(0, 0, 0, horizon);
+      const g = bgTargetCtx.createLinearGradient(0, 0, 0, horizon);
       g.addColorStop(0, "#6a4a8a"); g.addColorStop(1, "#e0a8c0");
-      ctx.fillStyle = g; ctx.fillRect(0, 0, w, horizon);
-      ctx.fillStyle = "#7a7a8c";
-      ctx.fillRect(0, horizon - 30, w, 30);
+      bgTargetCtx.fillStyle = g; bgTargetCtx.fillRect(0, 0, w, horizon);
+      bgTargetCtx.fillStyle = "#7a7a8c";
+      bgTargetCtx.fillRect(0, horizon - 30, w, 30);
       drawCastleTower(6, horizon - 60, 22, 60, "#8a8a9a");
       drawCastleTower(260, horizon - 60, 22, 60, "#8a8a9a");
-      ctx.fillStyle = "#b8ae9c";
-      ctx.fillRect(0, horizon, w, h - horizon);
+      bgTargetCtx.fillStyle = "#b8ae9c";
+      bgTargetCtx.fillRect(0, horizon, w, h - horizon);
       const houseColors = [["#e0a458", "#8c4a2f"], ["#c9a0d8", "#5c3a6b"]];
       let hx2 = 30;
       for (let i = 0; i < 3; i++) {
@@ -726,37 +769,37 @@
       }
     } else {
       // 8: 王の城（最終ステージ：豪華版）
-      const g = ctx.createLinearGradient(0, 0, 0, horizon);
+      const g = bgTargetCtx.createLinearGradient(0, 0, 0, horizon);
       g.addColorStop(0, "#190033"); g.addColorStop(0.6, "#400066"); g.addColorStop(1, "#800080");
-      ctx.fillStyle = g; ctx.fillRect(0, 0, w, horizon);
+      bgTargetCtx.fillStyle = g; bgTargetCtx.fillRect(0, 0, w, horizon);
 
       // 背景のキラキラ星
       const stars = [[20,15], [60,35], [95,12], [140,28], [190,10], [225,32], [270,18]];
-      ctx.fillStyle = "#ffff99";
+      bgTargetCtx.fillStyle = "#ffff99";
       stars.forEach(([sx, sy]) => {
-        ctx.fillRect(sx, sy, 2, 2);
-        ctx.fillRect(sx-1, sy+1, 4, 1);
-        ctx.fillRect(sx+1, sy-1, 1, 4);
+        bgTargetCtx.fillRect(sx, sy, 2, 2);
+        bgTargetCtx.fillRect(sx-1, sy+1, 4, 1);
+        bgTargetCtx.fillRect(sx+1, sy-1, 1, 4);
       });
 
       // 床（豪華な赤絨毯と金枠）
-      ctx.fillStyle = "#500a18";
-      ctx.fillRect(0, horizon, w, h - horizon);
-      ctx.fillStyle = "#9e1b32";
-      ctx.fillRect(0, horizon + 6, w, h - horizon - 6);
-      ctx.fillStyle = "#ffd700";
-      ctx.fillRect(0, horizon, w, 4);
-      ctx.fillRect(0, horizon + 6, w, 2);
+      bgTargetCtx.fillStyle = "#500a18";
+      bgTargetCtx.fillRect(0, horizon, w, h - horizon);
+      bgTargetCtx.fillStyle = "#9e1b32";
+      bgTargetCtx.fillRect(0, horizon + 6, w, h - horizon - 6);
+      bgTargetCtx.fillStyle = "#ffd700";
+      bgTargetCtx.fillRect(0, horizon, w, 4);
+      bgTargetCtx.fillRect(0, horizon + 6, w, 2);
 
       // 城壁ベース
-      ctx.fillStyle = "#3d3250";
-      ctx.fillRect(40, horizon - 75, 208, 75);
+      bgTargetCtx.fillStyle = "#3d3250";
+      bgTargetCtx.fillRect(40, horizon - 75, 208, 75);
 
       // レンガ模様
-      ctx.fillStyle = "#2c223c";
+      bgTargetCtx.fillStyle = "#2c223c";
       for (let y = horizon - 70; y < horizon; y += 12) {
         for (let x = 45; x < 240; x += 24) {
-          ctx.fillRect(x + ((y % 24 === 0) ? 12 : 0), y, 10, 4);
+          bgTargetCtx.fillRect(x + ((y % 24 === 0) ? 12 : 0), y, 10, 4);
         }
       }
 
@@ -765,42 +808,58 @@
       drawCastleTower(242, horizon - 85, 36, 85, "#4d4066");
 
       // 中央大城門
-      const gateGrad = ctx.createLinearGradient(0, horizon - 50, 0, horizon);
+      const gateGrad = bgTargetCtx.createLinearGradient(0, horizon - 50, 0, horizon);
       gateGrad.addColorStop(0, "#d4af37");
       gateGrad.addColorStop(1, "#8b6508");
-      ctx.fillStyle = gateGrad;
-      ctx.fillRect(114, horizon - 50, 60, 50);
+      bgTargetCtx.fillStyle = gateGrad;
+      bgTargetCtx.fillRect(114, horizon - 50, 60, 50);
 
       // 門のアーチ上部
-      ctx.beginPath();
-      ctx.arc(144, horizon - 50, 30, Math.PI, 0);
-      ctx.fill();
+      bgTargetCtx.beginPath();
+      bgTargetCtx.arc(144, horizon - 50, 30, Math.PI, 0);
+      bgTargetCtx.fill();
 
-      ctx.fillStyle = "#1a0f00";
-      ctx.fillRect(124, horizon - 40, 40, 40);
-      ctx.beginPath();
-      ctx.arc(144, horizon - 40, 20, Math.PI, 0);
-      ctx.fill();
+      bgTargetCtx.fillStyle = "#1a0f00";
+      bgTargetCtx.fillRect(124, horizon - 40, 40, 40);
+      bgTargetCtx.beginPath();
+      bgTargetCtx.arc(144, horizon - 40, 20, Math.PI, 0);
+      bgTargetCtx.fill();
 
       // 金の旗と装飾
-      ctx.fillStyle = "#ffcc00";
-      ctx.fillRect(52, horizon - 65, 12, 28);
-      ctx.fillRect(224, horizon - 65, 12, 28);
-      ctx.fillStyle = "#cc0000";
-      ctx.fillRect(54, horizon - 63, 8, 24);
-      ctx.fillRect(226, horizon - 63, 8, 24);
+      bgTargetCtx.fillStyle = "#ffcc00";
+      bgTargetCtx.fillRect(52, horizon - 65, 12, 28);
+      bgTargetCtx.fillRect(224, horizon - 65, 12, 28);
+      bgTargetCtx.fillStyle = "#cc0000";
+      bgTargetCtx.fillRect(54, horizon - 63, 8, 24);
+      bgTargetCtx.fillRect(226, horizon - 63, 8, 24);
 
       // ステンドグラス窓
-      ctx.fillStyle = "#00ffff";
-      ctx.fillRect(80, horizon - 55, 14, 22);
-      ctx.fillRect(194, horizon - 55, 14, 22);
-      ctx.fillStyle = "#ff00ff";
-      ctx.fillRect(83, horizon - 52, 8, 16);
-      ctx.fillRect(197, horizon - 52, 8, 16);
+      bgTargetCtx.fillStyle = "#00ffff";
+      bgTargetCtx.fillRect(80, horizon - 55, 14, 22);
+      bgTargetCtx.fillRect(194, horizon - 55, 14, 22);
+      bgTargetCtx.fillStyle = "#ff00ff";
+      bgTargetCtx.fillRect(83, horizon - 52, 8, 16);
+      bgTargetCtx.fillRect(197, horizon - 52, 8, 16);
 
       // 中央のオーブ / クリスタル
       drawCrystal(144, horizon - 65, "#00ffff");
     }
+  }
+
+  // 背景キャッシュ：レベルが変わった時だけ drawBackground() を実行し、
+  // 通常フレームはこのキャンバスを drawImage するだけにして描画負荷を抑える。
+  const bgCache = document.createElement('canvas');
+  bgCache.width = canvas.width;
+  bgCache.height = canvas.height;
+  const bgCacheCtx = bgCache.getContext('2d');
+  let bgCachedLevel = null;
+
+  function ensureBackgroundCache(level) {
+    if (bgCachedLevel === level) return;
+    bgTargetCtx = bgCacheCtx;
+    drawBackground(level);
+    bgTargetCtx = ctx;
+    bgCachedLevel = level;
   }
 
   function drawGoalMarker() {
@@ -993,7 +1052,9 @@
       }
     }
 
-    drawBackground(currentLevel);
+    ensureBackgroundCache(currentLevel);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(bgCache, 0, 0);
     drawGoalMarker();
     const spriteY = horizon - 16 * SPRITE_P + bounceOffset;
     drawSprite(currentLevel, walkX, spriteY, SPRITE_P, legFrame, false);
@@ -1015,7 +1076,7 @@
       "LV.4 <ruby>森<rt>もり</rt></ruby>の<ruby>賢者<rt>けんじゃ</rt></ruby>",
       "LV.5 <ruby>山<rt>やま</rt></ruby>の<ruby>探検家<rt>たんけんか</rt></ruby>",
       "LV.6 <ruby>洞窟<rt>どうくつ</rt></ruby>の<ruby>勇士<rt>ゆうし</rt></ruby>",
-      "LV.7 <ruby>王国<rt>おうこく</rt></ruby><ruby>騎士<rt>きし</rt></ruby>",
+      "LV.7 <ruby>王国<rt>おうこく</rt></ruby>の<ruby>騎士<rt>きし</rt></ruby>",
       "LV.8 でんせつのヒーロー"
     ];
     document.getElementById('heroTitle').innerHTML = titles[lvl - 1] + `（${SCENE_NAMES[lvl - 1]}）`;
@@ -1059,6 +1120,8 @@
       list.innerHTML = '<div class="history-empty">まだ<ruby>記録<rt>きろく</rt></ruby>がありません</div>';
       return;
     }
+    // e.label はすでにエスケープ済みの文字列として保存されているので、
+    // ここでは innerHTML にそのまま差し込んでよい。
     list.innerHTML = entries.map(e => `
       <div class="history-entry">
         <span>${e.label}</span>
@@ -1068,10 +1131,7 @@
   }
 
   function updateParentLockUI() {
-    const today = getTodayStr();
-    if (state.lastPlayDate !== today) {
-      state.categoryCounts = {};
-    }
+    handleDayRollover();
 
     const lockStatusEl = document.getElementById('lockStatus');
     const btn = document.getElementById('powerUpBtn');
@@ -1101,6 +1161,10 @@
     return 'hero:' + name.trim();
   }
 
+  // ── 保存先アダプター ─────────────────────────────────────
+  // Claudeのアーティファクトとして公開する場合は window.storage（永続ストレージAPI）が使え、
+  // GitHub Pagesなど外部ホスティングにデプロイする場合は window.storage が存在しないため
+  // 自動的に localStorage にフォールバックする。
   const hasClaudeStorage = typeof window.storage !== 'undefined';
 
   async function storageGet(key) {
@@ -1158,16 +1222,9 @@
       state = { power: 0, todayPower: 0, yesterdayPower: 0, history: [], parentLock: false, categoryCounts: {}, lastPlayDate: "", lastSkill: "", lastMsg: "" };
     }
 
-    // 日付をまたいだ場合の自動切り替え処理（案2のロジック）
-    const today = getTodayStr();
-    if (state.lastPlayDate && state.lastPlayDate !== today) {
-      // 日付が変わっているので、前日の今日パワーを昨日のパワーにスライドし、今日のパワーを0にリセット
-      state.yesterdayPower = state.todayPower;
-      state.todayPower = 0;
-      state.categoryCounts = {};
-    } else if (!state.lastPlayDate) {
-      state.lastPlayDate = today;
-    }
+    // 日付をまたいでいたら繰り上げる（発生した場合はここで確定保存する。
+    // これにより executePowerUp() 側で二重に繰り上がることがなくなる）
+    const rolledOver = handleDayRollover();
 
     currentHeroKey = key;
     currentLevel = levelFromPower(state.power);
@@ -1181,6 +1238,10 @@
     renderHistory();
     updateParentLockUI();
     document.getElementById('loadingNote').style.display = 'none';
+
+    if (rolledOver) {
+      await saveHero();
+    }
   }
 
   async function saveHero() {
@@ -1208,23 +1269,23 @@
     await loadHero();
   }
 
-  function getRandomMessage(isRest, name, category, detail, timeMinutes) {
-    const detailStr = detail ? `（${detail}）` : "";
+  function getRandomMessage(isRest, safeName, category, safeDetail, timeMinutes) {
     let msgPool = [];
-    
+
     if (isRest) {
       msgPool = [
-        `【<ruby>評価<rt>ひょうか</rt></ruby>】${timeMinutes}<ruby>分間<rt>ふんかん</rt></ruby>しっかりリフレッシュ！「${detail || "自由時間"}」でMPを<ruby>回復<rt>かいふく</rt></ruby>したぞ。でも<ruby>昨日<rt>きのう</rt></ruby>の<ruby>自分<rt>じぶん</rt></ruby>を<ruby>越<rt>こ</rt></ruby>えるには、<ruby>明日<rt>あした</rt></ruby>は<ruby>勉強<rt>べんきょう</rt></ruby>やお<ruby>手伝<rt>てつだ</rt></ruby>いに<ruby>挑戦<rt>ちょうせん</rt></ruby>だ！`,
-        `【<ruby>評価<rt>ひょうか</rt></ruby>】<ruby>休<rt>やす</rt></ruby>むのも<ruby>勇者<rt>ゆうしゃ</rt></ruby>の<ruby>大事<rt>だいじ</rt></ruby>な<ruby>仕事<rt>しごと</rt></ruby>！「${detail || "自由時間"}」でパワーを<ruby>溜<rt>た</rt></ruby>めたぞ。<ruby>次<rt>つぎ</rt></ruby>はメラメラ<ruby>燃<rt>も</rt></ruby>える<ruby>情熱<rt>じょうねつ</rt></ruby>で<ruby>学習<rt>がくしゅう</rt></ruby>や<ruby>運動<rt>うんどう</rt></ruby>にチャレンジだ！`,
+        `【<ruby>評価<rt>ひょうか</rt></ruby>】${timeMinutes}<ruby>分間<rt>ふんかん</rt></ruby>しっかりリフレッシュ！「${safeDetail || "自由時間"}」でMPを<ruby>回復<rt>かいふく</rt></ruby>したぞ。でも<ruby>昨日<rt>きのう</rt></ruby>の<ruby>自分<rt>じぶん</rt></ruby>を<ruby>越<rt>こ</rt></ruby>えるには、<ruby>明日<rt>あした</rt></ruby>は<ruby>勉強<rt>べんきょう</rt></ruby>やお<ruby>手伝<rt>てつだ</rt></ruby>いに<ruby>挑戦<rt>ちょうせん</rt></ruby>だ！`,
+        `【<ruby>評価<rt>ひょうか</rt></ruby>】<ruby>休<rt>やす</rt></ruby>むのも<ruby>勇者<rt>ゆうしゃ</rt></ruby>の<ruby>大事<rt>だいじ</rt></ruby>な<ruby>仕事<rt>しごと</rt></ruby>！「${safeDetail || "自由時間"}」でパワーを<ruby>溜<rt>た</rt></ruby>めたぞ。<ruby>次<rt>つぎ</rt></ruby>はメラメラ<ruby>燃<rt>も</rt></ruby>える<ruby>情熱<rt>じょうねつ</rt></ruby>で<ruby>学習<rt>がくしゅう</rt></ruby>や<ruby>運動<rt>うんどう</rt></ruby>にチャレンジだ！`,
         `【<ruby>評価<rt>ひょうか</rt></ruby>】しっかり<ruby>休憩<rt>きゅうけい</rt></ruby>して<ruby>体力<rt>たいりょく</rt></ruby>マンタン！ゲームやテレビもいいけれど、<ruby>明日<rt>あした</rt></ruby>は<ruby>宿題<rt>しゅくだい</rt></ruby>やお<ruby>仕事<rt>しごと</rt></ruby>でパワーを<ruby>爆発<rt>ばくはつ</rt></ruby>させよう！`,
         `【<ruby>評価<rt>ひょうか</rt></ruby>】リラックスタイム<ruby>完了<rt>かんりょう</rt></ruby>！のんびり<ruby>過<rt>す</rt></ruby>ごしてHP<ruby>回復<rt>かいふく</rt></ruby>だ。<ruby>明日<rt>あした</rt></ruby>からはまた<ruby>攻<rt>せ</rt></ruby>めの<ruby>姿勢<rt>しせい</rt></ruby>で「<ruby>昨日<rt>きのう</rt></ruby>の<ruby>自分<rt>じぶん</rt></ruby>」に<ruby>挑<rt>いど</rt></ruby>もう！`
       ];
     } else {
+      const detailStr = safeDetail ? `（${safeDetail}）` : "";
       msgPool = [
-        `【<ruby>評価<rt>ひょうか</rt></ruby>】${timeMinutes}<ruby>分間<rt>ふんかん</rt></ruby>、<ruby>集中<rt>しゅうちゅう</rt></ruby>して「${category}${detailStr}」に<ruby>取<rt>と</rt></ruby>り<ruby>組<rt>く</rt></ruby>んだ！${name}の<ruby>頑張<rt>がんば</rt></ruby>りによって、<ruby>昨日<rt>きのう</rt></ruby>の<ruby>自分<rt>じぶん</rt></ruby>を<ruby>見事<rt>みごと</rt></ruby>に<ruby>突破<rt>とっぱ</rt></ruby>したぞ！`,
-        `【<ruby>評価<rt>ひょうか</rt></ruby>】すさまじい<ruby>集中力<rt>しゅうちゅうりょく</rt></ruby>だ！${timeMinutes}<ruby>分間<rt>ふんかん</rt></ruby>の「${category}${detailStr}」で${name}の<ruby>攻撃力<rt>こうげきりょく</rt></ruby>が<ruby>大幅<rt>おおはば</rt></ruby>アップ！その<ruby>調子<rt>ちょうし</rt></ruby>で<ruby>突き進<rt>つきすす</rt></ruby>め！`,
+        `【<ruby>評価<rt>ひょうか</rt></ruby>】${timeMinutes}<ruby>分間<rt>ふんかん</rt></ruby>、<ruby>集中<rt>しゅうちゅう</rt></ruby>して「${category}${detailStr}」に<ruby>取<rt>と</rt></ruby>り<ruby>組<rt>く</rt></ruby>んだ！${safeName}の<ruby>頑張<rt>がんば</rt></ruby>りによって、<ruby>昨日<rt>きのう</rt></ruby>の<ruby>自分<rt>じぶん</rt></ruby>を<ruby>見事<rt>みごと</rt></ruby>に<ruby>突破<rt>とっぱ</rt></ruby>したぞ！`,
+        `【<ruby>評価<rt>ひょうか</rt></ruby>】すさまじい<ruby>集中力<rt>しゅうちゅうりょく</rt></ruby>だ！${timeMinutes}<ruby>分間<rt>ふんかん</rt></ruby>の「${category}${detailStr}」で${safeName}の<ruby>攻撃力<rt>こうげきりょく</rt></ruby>が<ruby>大幅<rt>おおはば</rt></ruby>アップ！その<ruby>調子<rt>ちょうし</rt></ruby>で<ruby>突き進<rt>つきすす</rt></ruby>め！`,
         `【<ruby>評価<rt>ひょうか</rt></ruby>】<ruby>素晴<rt>すば</rt></ruby>らしい<ruby>継続力<rt>けいぞくりょく</rt></ruby>！${timeMinutes}<ruby>分間<rt>ふんかん</rt></ruby>の<ruby>努力<rt>どりょく</rt></ruby>「${category}${detailStr}」がヒーローの<ruby>大<rt>おお</rt></ruby>きな<ruby>糧<rt>かて</rt></ruby>となった！<ruby>昨日<rt>きのう</rt></ruby>の<ruby>自分<rt>じぶん</rt></ruby>を<ruby>越<rt>こ</rt></ruby>えて<ruby>新<rt>あたら</rt></ruby>たな<ruby>高<rt>たか</rt></ruby>みへ！`,
-        `【<ruby>評価<rt>ひょうか</rt></ruby>】<ruby>伝説<rt>でんせつ</rt></ruby>の<ruby>勇者<rt>ゆうしゃ</rt></ruby>への<ruby>第一歩<rt>だいいっぽ</rt></ruby>！${timeMinutes}<ruby>分間<rt>ふんかん</rt></ruby>じっくり「${category}${detailStr}」をやり<ruby>遂<rt>と</rt></ruby>げたぞ！${name}の<ruby>成長<rt>せいちょう</rt></ruby>スピードは<ruby>誰<rt>だれ</rt></ruby>にも<ruby>止<rt>と</rt></ruby>められない！`
+        `【<ruby>評価<rt>ひょうか</rt></ruby>】<ruby>伝説<rt>でんせつ</rt></ruby>の<ruby>勇者<rt>ゆうしゃ</rt></ruby>への<ruby>第一歩<rt>だいいっぽ</rt></ruby>！${timeMinutes}<ruby>分間<rt>ふんかん</rt></ruby>じっくり「${category}${detailStr}」をやり<ruby>遂<rt>と</rt></ruby>げたぞ！${safeName}の<ruby>成長<rt>せいちょう</rt></ruby>スピードは<ruby>誰<rt>だれ</rt></ruby>にも<ruby>止<rt>と</rt></ruby>められない！`
       ];
     }
 
@@ -1236,13 +1297,7 @@
   }
 
   async function executePowerUp() {
-    const today = getTodayStr();
-    if (state.lastPlayDate !== today) {
-      state.yesterdayPower = state.todayPower;
-      state.todayPower = 0;
-      state.categoryCounts = {};
-      state.lastPlayDate = today;
-    }
+    handleDayRollover();
 
     const selectedRadio = document.querySelector('input[name="actionCategory"]:checked');
     const category = selectedRadio ? selectedRadio.value : "宿題・勉強";
@@ -1279,10 +1334,14 @@
     btn.disabled = true;
 
     const timeMinutes = parseInt(document.getElementById('actionTime').value) || 5;
-    const detail = document.getElementById('actionDetail').value.trim();
-    const name = document.getElementById('heroName').value || "ヒーロー";
+    const rawDetail = document.getElementById('actionDetail').value.trim();
+    const rawName = document.getElementById('heroName').value || "ヒーロー";
 
-    const text = detail.toLowerCase();
+    // 表示（innerHTML）に使うのはエスケープ済みの値。キーワード判定には元の文字列を使う。
+    const safeDetail = escapeHtml(rawDetail);
+    const safeName = escapeHtml(rawName);
+
+    const text = rawDetail.toLowerCase();
     const lowKeywords = ["漫画", "マンガ", "まんが", "コミック", "昼寝", "ひるね", "寝た", "ねた", "ごろごろ", "ゴロゴロ", "ゲーム", "テレビ", "さぼ", "サボ", "何もしない", "スマホ", "youtube"];
     const isLowText = lowKeywords.some(kw => text.includes(kw));
 
@@ -1335,12 +1394,12 @@
     if (isRest) {
       bonus = 2;
       title = "💤 <ruby>体力<rt>たいりょく</rt></ruby>を<ruby>回復<rt>かいふく</rt></ruby>した！ (+2 PT)";
-      msg = getRandomMessage(true, name, category, detail, timeMinutes);
+      msg = getRandomMessage(true, safeName, category, safeDetail, timeMinutes);
       play8BitSound(false);
     } else {
       bonus = Math.floor(timeMinutes * 0.45) + 3;
       title = `🔥 <ruby>昨日<rt>きのう</rt></ruby>の<ruby>自分<rt>じぶん</rt></ruby>を<ruby>越<rt>こ</rt></ruby>えた！ (+${bonus} PT)`;
-      msg = getRandomMessage(false, name, category, detail, timeMinutes);
+      msg = getRandomMessage(false, safeName, category, safeDetail, timeMinutes);
       play8BitSound(true);
     }
 
@@ -1357,8 +1416,9 @@
       "休養・自由時間": "<ruby>休養<rt>きゅうよう</rt></ruby>・<ruby>自由時間<rt>じゆうじかん</rt></ruby>"
     };
 
+    // 履歴に保存する label もエスケープ済みの safeDetail を使う
     state.history.unshift({
-      label: `${catLabels[category] || category}${detail ? '（' + detail + '）' : ''} / ${timeMinutes}<ruby>分<rt>ふん</rt></ruby>`,
+      label: `${catLabels[category] || category}${safeDetail ? '（' + safeDetail + '）' : ''} / ${timeMinutes}<ruby>分<rt>ふん</rt></ruby>`,
       bonus: bonus
     });
     state.history = state.history.slice(0, 30);
@@ -1370,7 +1430,7 @@
     document.getElementById('skillName').innerHTML = `⚔️ ひっさつわざ：「${skill}」`;
     document.getElementById('msgContent').innerHTML = msg;
     msgBox.style.display = 'block';
-    
+
     msgBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
     renderHistory();
