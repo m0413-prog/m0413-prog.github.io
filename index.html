@@ -723,19 +723,81 @@
         hx2 += 80;
       }
     } else {
+      // 8: 王の城（最終ステージ：豪華版）
       const g = ctx.createLinearGradient(0, 0, 0, horizon);
-      g.addColorStop(0, "#2b1055"); g.addColorStop(1, "#6a2e6f");
+      g.addColorStop(0, "#190033"); g.addColorStop(0.6, "#400066"); g.addColorStop(1, "#800080");
       ctx.fillStyle = g; ctx.fillRect(0, 0, w, horizon);
-      ctx.fillStyle = "#7a1f2b";
+
+      // 背景のキラキラ星
+      const stars = [[20,15], [60,35], [95,12], [140,28], [190,10], [225,32], [270,18]];
+      ctx.fillStyle = "#ffff99";
+      stars.forEach(([sx, sy]) => {
+        ctx.fillRect(sx, sy, 2, 2);
+        ctx.fillRect(sx-1, sy+1, 4, 1);
+        ctx.fillRect(sx+1, sy-1, 1, 4);
+      });
+
+      // 床（豪華な赤絨毯と金枠）
+      ctx.fillStyle = "#500a18";
       ctx.fillRect(0, horizon, w, h - horizon);
-      ctx.fillStyle = "#d4af37";
+      ctx.fillStyle = "#9e1b32";
+      ctx.fillRect(0, horizon + 6, w, h - horizon - 6);
+      ctx.fillStyle = "#ffd700";
       ctx.fillRect(0, horizon, w, 4);
-      drawCastleTower(16, horizon - 50, 26, 50, "#8a8a9a");
-      drawCastleTower(246, horizon - 50, 26, 50, "#8a8a9a");
-      ctx.fillStyle = "#5c5c6e";
-      ctx.fillRect(66, horizon - 34, 156, 34);
-      ctx.fillStyle = "#3a3a48";
-      ctx.fillRect(130, horizon - 20, 28, 20);
+      ctx.fillRect(0, horizon + 6, w, 2);
+
+      // 城壁ベース
+      ctx.fillStyle = "#3d3250";
+      ctx.fillRect(40, horizon - 75, 208, 75);
+
+      // レンガ模様
+      ctx.fillStyle = "#2c223c";
+      for (let y = horizon - 70; y < horizon; y += 12) {
+        for (let x = 45; x < 240; x += 24) {
+          ctx.fillRect(x + ((y % 24 === 0) ? 12 : 0), y, 10, 4);
+        }
+      }
+
+      // 塔（左右）
+      drawCastleTower(10, horizon - 85, 36, 85, "#4d4066");
+      drawCastleTower(242, horizon - 85, 36, 85, "#4d4066");
+
+      // 中央大城門
+      const gateGrad = ctx.createLinearGradient(0, horizon - 50, 0, horizon);
+      gateGrad.addColorStop(0, "#d4af37");
+      gateGrad.addColorStop(1, "#8b6508");
+      ctx.fillStyle = gateGrad;
+      ctx.fillRect(114, horizon - 50, 60, 50);
+
+      // 門のアーチ上部
+      ctx.beginPath();
+      ctx.arc(144, horizon - 50, 30, Math.PI, 0);
+      ctx.fill();
+
+      ctx.fillStyle = "#1a0f00";
+      ctx.fillRect(124, horizon - 40, 40, 40);
+      ctx.beginPath();
+      ctx.arc(144, horizon - 40, 20, Math.PI, 0);
+      ctx.fill();
+
+      // 金の旗と装飾
+      ctx.fillStyle = "#ffcc00";
+      ctx.fillRect(52, horizon - 65, 12, 28);
+      ctx.fillRect(224, horizon - 65, 12, 28);
+      ctx.fillStyle = "#cc0000";
+      ctx.fillRect(54, horizon - 63, 8, 24);
+      ctx.fillRect(226, horizon - 63, 8, 24);
+
+      // ステンドグラス窓
+      ctx.fillStyle = "#00ffff";
+      ctx.fillRect(80, horizon - 55, 14, 22);
+      ctx.fillRect(194, horizon - 55, 14, 22);
+      ctx.fillStyle = "#ff00ff";
+      ctx.fillRect(83, horizon - 52, 8, 16);
+      ctx.fillRect(197, horizon - 52, 8, 16);
+
+      // 中央のオーブ / クリスタル
+      drawCrystal(144, horizon - 65, "#00ffff");
     }
   }
 
@@ -752,7 +814,9 @@
     ctx.fill();
   }
 
-  const LEVEL_THRESHOLDS = [0, 40, 100, 190, 320, 500, 730, 1020];
+  // 経験値のしきい値（最終レベルは1000〜）
+  const LEVEL_THRESHOLDS = [0, 40, 100, 190, 320, 500, 730, 1000];
+  const MAX_POWER = 1500; // 1500PTで右端（ゴール）到達
 
   function levelFromPower(p) {
     let lvl = 1;
@@ -868,7 +932,11 @@
 
   function progressRatio() {
     const lvl = currentLevel;
-    if (lvl >= 8) return 1;
+    if (lvl >= 8) {
+      // LV.8（王の城）は 1000 PT 〜 1500 PT の間で右端へ移動
+      const baseVal = LEVEL_THRESHOLDS[7]; // 1000
+      return Math.max(0, Math.min(1, (state.power - baseVal) / (MAX_POWER - baseVal)));
+    }
     const lower = LEVEL_THRESHOLDS[lvl - 1];
     const upper = LEVEL_THRESHOLDS[lvl];
     return Math.max(0, Math.min(1, (state.power - lower) / (upper - lower)));
@@ -882,11 +950,19 @@
     const fill = document.getElementById('xpBarFill');
     const label = document.getElementById('xpLabel');
     if (currentLevel >= 8) {
-      fill.style.width = '100%';
-      label.innerHTML = 'でんせつのヒーローに<ruby>到達<rt>とうたつ</rt></ruby>！';
+      const remaining = Math.max(0, MAX_POWER - state.power);
+      const pct = Math.min(100, Math.floor(((state.power - 1000) / (MAX_POWER - 1000)) * 100));
+      fill.style.width = pct + '%';
+      if (remaining === 0) {
+        label.innerHTML = 'カンスト！ でんせつのヒーロー達成！';
+      } else {
+        label.innerHTML = `ゴールまで あと ${remaining} pt`;
+      }
     } else {
       const upper = LEVEL_THRESHOLDS[currentLevel];
-      fill.innerHTML = `つぎのレベルまで あと ${Math.max(0, upper - state.power)} pt`;
+      const lower = LEVEL_THRESHOLDS[currentLevel - 1];
+      const pct = Math.min(100, Math.floor(((state.power - lower) / (upper - lower)) * 100));
+      fill.style.width = pct + '%';
       label.innerHTML = `つぎのレベルまで あと ${Math.max(0, upper - state.power)} pt`;
     }
   }
@@ -1103,6 +1179,19 @@
     if (!currentHeroKey) return;
     if (!confirm('このヒーローの記録をすべて消しますか？')) return;
     await storageDelete(currentHeroKey);
+
+    // フォーム入力欄・判定メッセージ欄の初期化
+    const firstRadio = document.querySelector('input[name="actionCategory"][value="宿題・勉強"]');
+    if (firstRadio) firstRadio.checked = true;
+
+    document.getElementById('actionTime').value = "5";
+    document.getElementById('actionDetail').value = "";
+
+    const msgBox = document.getElementById('msgBox');
+    msgBox.style.display = 'none';
+    document.getElementById('skillName').innerHTML = "";
+    document.getElementById('msgContent').innerHTML = "";
+
     await loadHero();
   }
 
