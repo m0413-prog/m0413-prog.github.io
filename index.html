@@ -48,6 +48,7 @@
       box-shadow: inset 0 0 0 4px #0000aa, 0 10px 30px rgba(0,0,0,0.8);
       border-radius: 4px;
       padding: 16px;
+      position: relative;
     }
 
     .title-banner {
@@ -69,7 +70,7 @@
       margin-bottom: 12px;
     }
 
-    /* 最上部に配置した保護者設定バー */
+    /* 保護者設定バー */
     .parent-bar {
       background: #000022;
       border: 1px dashed #8888ff;
@@ -92,14 +93,18 @@
       border-radius: 3px;
     }
 
+    /* キャラクター画面を上部固定（Sticky）に設定 */
     .stage {
+      position: sticky;
+      top: 8px;
+      z-index: 100;
       background: #000022;
       border: 3px solid #5555ff;
       border-radius: 4px;
-      padding: 16px;
+      padding: 12px;
       text-align: center;
       margin-bottom: 16px;
-      position: relative;
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.9);
     }
 
     .level-badge {
@@ -165,7 +170,7 @@
       justify-content: space-around;
       background: #000;
       border: 2px solid #fff;
-      padding: 8px;
+      padding: 6px;
       margin-top: 8px;
     }
 
@@ -196,12 +201,12 @@
     }
 
     .status-title {
-      font-size: 12px;
+      font-size: 11px;
       color: #8888ff;
     }
 
     .status-num {
-      font-size: 22px;
+      font-size: 20px;
       color: #00ffcc;
       text-shadow: 2px 2px #000;
     }
@@ -317,6 +322,7 @@
       border: 3px solid #fff;
       padding: 12px;
       margin-top: 16px;
+      margin-bottom: 16px;
       display: none;
       line-height: 1.8;
       transition: border-color 0.2s ease;
@@ -398,7 +404,7 @@
   <div class="title-banner">⚔️ <ruby>昨日<rt>きのう</rt></ruby>の<ruby>自分<rt>じぶん</rt></ruby>を<ruby>越<rt>こ</rt></ruby>えろ！</div>
   <div class="subtitle">〜 <ruby>長岡<rt>ながおか</rt></ruby>ヒーロー<ruby>育成<rt>いくせい</rt></ruby>RPG 〜</div>
 
-  <!-- 最上部に配置した保護者設定バー -->
+  <!-- 保護者設定バー -->
   <div class="parent-bar">
     <span id="lockStatus">🔓 プレイ<ruby>制限<rt>せいげん</rt></ruby>: <ruby>無制限<rt>むせいげん</rt></ruby></span>
     <button class="parent-btn" onclick="toggleParentControl()">🔒 <ruby>保護者<rt>ほごしゃ</rt></ruby><ruby>設定<rt>せってい</rt></ruby></button>
@@ -406,7 +412,7 @@
   
   <div class="loading-note" id="loadingNote">セーブデータを<ruby>読<rt>よ</rt></ruby>み<ruby>込<rt>こ</rt></ruby>み<ruby>中<rt>ちゅう</rt></ruby>...</div>
 
-  <!-- ステージ画面 -->
+  <!-- 固定表示されたステージ画面（Sticky） -->
   <div class="stage" id="stage">
     <div class="levelup-banner" id="levelupBanner">★ レベルアップ！ ★</div>
     <div class="level-badge" id="heroTitle"></div>
@@ -434,7 +440,6 @@
     <label>▶ ヒーローの<ruby>名<rt>な</rt></ruby>まえ</label>
     <input type="text" id="heroName" value="ミライ" placeholder="※ほんみょうはいれないでね">
 
-    <!-- ラジオボタン形式のカテゴリー選択欄 -->
     <label>▶ <ruby>取<rt>と</rt></ruby>り<ruby>組<rt>く</rt></ruby>んだカテゴリー</label>
     <div class="radio-group">
       <label class="radio-item">
@@ -463,7 +468,6 @@
       <div style="flex: 1;">
         <label>▶ <ruby>取<rt>と</rt></ruby>り<ruby>組<rt>く</rt></ruby>んだ<ruby>時間<rt>じかん</rt></ruby></label>
         <select id="actionTime">
-          <!-- デフォルトを5分間に設定 -->
           <option value="5" selected>5分間</option>
           <option value="10">10分間</option>
           <option value="15">15分間</option>
@@ -474,7 +478,6 @@
       </div>
     </div>
 
-    <!-- メモ記載例エリア -->
     <label>▶ <ruby>詳<rt>くわ</rt></ruby>しい<ruby>内容<rt>ないよう</rt></ruby>（メモ）</label>
     <div class="example-box">
       <ruby>例<rt>れい</rt></ruby>：<ruby>漢字<rt>かんじ</rt></ruby>ドリル／<ruby>皿洗<rt>さらあら</rt></ruby>い／<ruby>走<rt>はし</rt></ruby>り<ruby>込<rt>こ</rt></ruby>み
@@ -484,7 +487,7 @@
     <button class="rpg-btn" id="powerUpBtn" onclick="executePowerUp()" disabled>⚔️ パワーアップ！</button>
   </div>
 
-  <!-- メッセージ表示エリア -->
+  <!-- メッセージ表示エリア（入力フォーム直下に配置） -->
   <div class="msg-box" id="msgBox">
     <div class="msg-title" id="msgTitle">★ <ruby>判定<rt>はんてい</rt></ruby><ruby>結果<rt>けっか</rt></ruby></div>
     <div class="skill-name" id="skillName"></div>
@@ -513,17 +516,16 @@
   const canvas = document.getElementById('characterCanvas');
   const ctx = canvas.getContext('2d');
 
-  // 暗証番号（361）
   const PARENT_PIN = "361";
 
   let state = {
     power: 0,
     history: [],
-    parentLock: false,        // false: 無制限, true: 各カテゴリ2回まで
-    categoryCounts: {},       // 本日のカテゴリ別実行回数
-    lastPlayDate: "",         // YYYY-MM-DD
-    lastSkill: "",            // 連続防止用
-    lastMsg: ""               // 連続防止用
+    parentLock: false,
+    categoryCounts: {},
+    lastPlayDate: "",
+    lastSkill: "",
+    lastMsg: ""
   };
 
   let currentHeroKey = null;
@@ -534,7 +536,7 @@
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
   }
 
-  // ── ステージ背景 ─────────────
+  // 背景描画
   const SCENE_NAMES = [
     "<ruby>村<rt>むら</rt></ruby>はずれ",
     "<ruby>町<rt>まち</rt></ruby>なか",
@@ -750,7 +752,6 @@
     ctx.fill();
   }
 
-  // ── レベル閾値 ─────────────
   const LEVEL_THRESHOLDS = [0, 40, 100, 190, 320, 500, 730, 1020];
 
   function levelFromPower(p) {
@@ -761,9 +762,7 @@
     return lvl;
   }
 
-  // ── スプライト描画 ─────────────────
   function getPalette(level) {
-    // LV.8のスーツ色を赤マントと同化しないロイヤルブルー (#2563eb) に変更
     const suitByLevel = ["#33cc33", "#2ea86e", "#00cc99", "#00a8c0", "#0066ff", "#5b3df5", "#aa00ff", "#2563eb"];
     const armorByLevel = ["#999999", "#aaaaaa", "#bfbfbf", "#c9b37f", "#d4af37", "#e0c040", "#ffd700", "#ffd700"];
     const capeByLevel = [null, null, null, null, null, "#aa00ff", "#c724a8", "#ff0055"];
@@ -849,7 +848,6 @@
     ctx.restore();
   }
 
-  // ── アニメーション ──
   const SPRITE_P = 5;
   const WALK_MIN_X = 20;
   const WALK_MAX_X = canvas.width - 24 - 16 * SPRITE_P;
@@ -992,7 +990,6 @@
     `).join('');
   }
 
-  // ── 保護者制限 UI更新 ──────────────────────
   function updateParentLockUI() {
     const today = getTodayStr();
     if (state.lastPlayDate !== today) {
@@ -1011,7 +1008,6 @@
     btn.disabled = false;
   }
 
-  // 暗証番号入力のみでトグル切り替え
   function toggleParentControl() {
     const inputPin = prompt(`【保護者確認】暗証番号を入力してください。（ヒント：ミライ）`);
     if (inputPin === PARENT_PIN) {
@@ -1110,7 +1106,6 @@
     await loadHero();
   }
 
-  // ── メッセージ生成 ─────────────────────────
   function getRandomMessage(isRest, name, category, detail, timeMinutes) {
     const detailStr = detail ? `（${detail}）` : "";
     let msgPool = [];
@@ -1162,18 +1157,17 @@
     if (state.parentLock) {
       const currentCount = state.categoryCounts[category] || 0;
       if (currentCount >= 2) {
-        // 回数制限時のおしらせ：枠線・タイトル文字ともに赤色強調
         msgBox.style.borderColor = "#ff4d4d";
         msgTitle.style.color = "#ff4d4d";
         msgTitle.innerHTML = "⚠️ <ruby>回数<rt>かいすう</rt></ruby><ruby>制限<rt>せいげん</rt></ruby>のおしらせ";
         document.getElementById('skillName').innerHTML = "";
         document.getElementById('msgContent').innerHTML = `${catRubyNames[category] || category}は<ruby>本日<rt>ほんじつ</rt></ruby>すでに2<ruby>回<rt>かい</rt></ruby>おこないました。<ruby>他<rt>ほか</rt></ruby>のカテゴリーを<ruby>選<rt>えら</rt></ruby>ぶか、<ruby>明日<rt>あした</rt></ruby>また<ruby>挑戦<rt>ちょうせん</rt></ruby>してね！`;
         msgBox.style.display = 'block';
+        msgBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         return;
       }
     }
 
-    // 通常判定時：スタイルを初期値（白枠・黄文字）に戻す
     msgBox.style.borderColor = "#ffffff";
     msgTitle.style.color = "#ffcc00";
 
@@ -1273,6 +1267,10 @@
     document.getElementById('skillName').innerHTML = `⚔️ ひっさつわざ：「${skill}」`;
     document.getElementById('msgContent').innerHTML = msg;
     msgBox.style.display = 'block';
+    
+    // メッセージが確実に見える位置へ滑らかにスクロール
+    msgBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
     renderHistory();
 
     const stage = document.getElementById('stage');
