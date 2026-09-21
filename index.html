@@ -271,11 +271,11 @@
       outline: none;
     }
 
-    /* 直列（縦1列）配置 */
+    /* 左右ズレ解消＆文字押し広げ防止 */
     .radio-group {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px 4px;
       margin-bottom: 12px;
       background: #000;
       border: 2px solid #fff;
@@ -284,12 +284,19 @@
 
     .radio-item {
       display: flex;
-      align-items: center; 
+      align-items: flex-start;
       cursor: pointer;
-      font-size: 13px; 
-      line-height: 1.8;
-      padding: 2px 4px;
+      font-size: 11px;
+      line-height: 1.3;
+      padding: 2px;
       border-radius: 3px;
+      min-width: 0;
+      min-height: 40px;
+    }
+
+    .radio-item span {
+      min-width: 0;
+      display: block;
     }
 
     .radio-item:hover {
@@ -297,12 +304,11 @@
     }
 
     .radio-item input[type="radio"] {
-      margin-right: 8px;
+      margin-top: 3px;
+      margin-right: 4px;
       accent-color: #ffcc00;
       cursor: pointer;
       flex-shrink: 0;
-      width: 14px;
-      height: 14px;
     }
 
     .example-box {
@@ -460,7 +466,6 @@
 
 <div class="rpg-window">
   <div class="title-banner">越え⚔️ロード</div>
-  <!-- サブタイトルを修正 -->
   <div class="subtitle">〜 <ruby>昨日<rt>きのう</rt></ruby>の<ruby>自分<rt>じぶん</rt></ruby>を<ruby>越<rt>こ</rt></ruby>える、<ruby>長岡<rt>ながおか</rt></ruby>ヒーロー<ruby>育成<rt>いくせい</rt></ruby>RPG 〜</div>
   
   <div class="stage" id="stage">
@@ -606,7 +611,7 @@
     return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
   }
 
-  // ── 長岡花火風エフェクトクラス（花火演出） ──
+  // ── 長岡花火風エフェクトクラス ──
   class NagaokaFireworksEffect {
     constructor(canvas, ctx) {
       this.canvas = canvas;
@@ -660,7 +665,7 @@
     }
   }
 
-  // ★ 昨日超えを達成した日の継続オーラエフェクト ★
+  // ── 昨日超えを達成した日の継続オーラエフェクト ──
   class AwakenedAuraEffect {
     constructor(canvas, ctx) {
       this.canvas = canvas;
@@ -963,6 +968,7 @@
     ["....LL....LL....", "....LL....LL....", "...BBB....BBB..."]
   ];
 
+  // ── キャラクター描画（アウトライン対応） ──
   function drawSprite(level, ox, oy, p, legFrame, mirrored) {
     const pal = getPalette(level);
     const c = { skin: "#ffcc99", hair: "#663300", eye: "#000000", suit: pal.suit, armor: pal.armor, cape: pal.cape, boots: "#4a2c17", sword: "#ffffff", gold: "#ffcc00" };
@@ -972,39 +978,71 @@
     ctx.translate(ox, oy);
     if (mirrored) { ctx.translate(16 * p, 0); ctx.scale(-1, 1); }
 
+    // オーラ（アウトラインより奥に描画）
     if (level >= 8) {
       ctx.save(); ctx.globalAlpha = 0.55; ctx.fillStyle = c.gold;
       ctx.beginPath(); ctx.arc(8 * p, 8 * p, 9 * p, 0, Math.PI * 2); ctx.fill(); ctx.restore();
     }
 
-    if (c.cape) {
-      ctx.fillStyle = c.cape;
-      ctx.beginPath(); ctx.moveTo(3 * p, 6 * p); ctx.lineTo(13 * p, 6 * p); ctx.lineTo(15 * p, 14.5 * p); ctx.lineTo(1 * p, 14.5 * p); ctx.closePath(); ctx.fill();
-    }
+    // キャラクター本体を描画する内部関数（isOutline=trueの場合はすべて黒で塗る）
+    const drawBody = (isOutline) => {
+      const color = isOutline ? "#000000" : null;
 
-    for (let r = 0; r < 16; r++) {
-      for (let col = 0; col < 16; col++) {
-        const char = sprite[r][col];
-        if (char === ".") continue;
-        if (char === "H") ctx.fillStyle = c.hair;
-        if (char === "S") ctx.fillStyle = c.skin;
-        if (char === "E") ctx.fillStyle = c.eye;
-        if (char === "M") ctx.fillStyle = "#ff6666";
-        if (char === "A") ctx.fillStyle = c.armor;
-        if (char === "L") ctx.fillStyle = c.suit;
-        if (char === "B") ctx.fillStyle = c.boots;
-        ctx.fillRect(col * p, r * p, p, p);
+      // マント
+      if (c.cape) {
+        ctx.fillStyle = color || c.cape;
+        ctx.beginPath(); ctx.moveTo(3 * p, 6 * p); ctx.lineTo(13 * p, 6 * p); ctx.lineTo(15 * p, 14.5 * p); ctx.lineTo(1 * p, 14.5 * p); ctx.closePath(); ctx.fill();
       }
+
+      // ドット絵本体
+      for (let r = 0; r < 16; r++) {
+        for (let col = 0; col < 16; col++) {
+          const char = sprite[r][col];
+          if (char === ".") continue;
+          
+          if (color) {
+            ctx.fillStyle = color;
+          } else {
+            if (char === "H") ctx.fillStyle = c.hair;
+            else if (char === "S") ctx.fillStyle = c.skin;
+            else if (char === "E") ctx.fillStyle = c.eye;
+            else if (char === "M") ctx.fillStyle = "#ff6666";
+            else if (char === "A") ctx.fillStyle = c.armor;
+            else if (char === "L") ctx.fillStyle = c.suit;
+            else if (char === "B") ctx.fillStyle = c.boots;
+          }
+          ctx.fillRect(col * p, r * p, p, p);
+        }
+      }
+
+      // 剣
+      if (level >= 2) {
+        ctx.fillStyle = color || c.sword; ctx.fillRect(12 * p, 4 * p, 2 * p, 8 * p);
+        ctx.fillStyle = color || c.gold; ctx.fillRect(11 * p, 8 * p, 4 * p, 2 * p);
+      }
+      
+      // 王冠
+      if (level >= 8) {
+        ctx.fillStyle = color || c.gold;
+        ctx.fillRect(5 * p, 0, p, p * 0.6); ctx.fillRect(7 * p, 0, p, p * 0.6); ctx.fillRect(9 * p, 0, p, p * 0.6);
+      }
+    };
+
+    // 1ドット（pサイズ）分ずらして8方向へ黒色で描画し、アウトラインを生成
+    const offsets = [
+      [0, -p], [0, p], [-p, 0], [p, 0],
+      [-p, -p], [p, -p], [-p, p], [p, p]
+    ];
+    for (const [dx, dy] of offsets) {
+      ctx.save();
+      ctx.translate(dx, dy);
+      drawBody(true);
+      ctx.restore();
     }
 
-    if (level >= 2) {
-      ctx.fillStyle = c.sword; ctx.fillRect(12 * p, 4 * p, 2 * p, 8 * p);
-      ctx.fillStyle = c.gold; ctx.fillRect(11 * p, 8 * p, 4 * p, 2 * p);
-    }
-    if (level >= 8) {
-      ctx.fillStyle = c.gold;
-      ctx.fillRect(5 * p, 0, p, p * 0.6); ctx.fillRect(7 * p, 0, p, p * 0.6); ctx.fillRect(9 * p, 0, p, p * 0.6);
-    }
+    // 最後に本来の色で中央に描画
+    drawBody(false);
+
     ctx.restore();
   }
 
