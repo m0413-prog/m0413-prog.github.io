@@ -524,7 +524,6 @@
 
     <label>▶ <ruby>詳<rt>くわ</rt></ruby>しい<ruby>内容<rt>ないよう</rt></ruby>（メモ）</label>
     <div class="example-box">
-      <!-- 例文を なわとび に変更 -->
       <ruby>例<rt>れい</rt></ruby>：<ruby>漢字<rt>かんじ</rt></ruby>ドリル／<ruby>皿洗<rt>さらあら</rt></ruby>い／なわとび
     </div>
     <input type="text" id="actionDetail" placeholder="なにをしたか入力してね">
@@ -950,7 +949,18 @@
     const suitByLevel = ["#33cc33", "#2ea86e", "#00cc99", "#00a8c0", "#0066ff", "#5b3df5", "#aa00ff", "#2563eb"];
     const armorByLevel = ["#999999", "#aaaaaa", "#bfbfbf", "#c9b37f", "#d4af37", "#e0c040", "#ffd700", "#ffd700"];
     const capeByLevel = [null, null, null, null, null, "#aa00ff", "#c724a8", "#ff0055"];
-    return { suit: suitByLevel[level - 1], armor: armorByLevel[level - 1], cape: capeByLevel[level - 1] };
+    
+    // ★ 剣の刃と鍔（つば）の色をレベルごとに設定（LV8は金色）
+    const swordBladeByLevel = ["#ffffff", "#cccccc", "#eeeeee", "#99ccff", "#ff9999", "#99ffbb", "#ddaaff", "#ffffaa"];
+    const swordHiltByLevel  = ["#ffcc00", "#888888", "#555555", "#0055cc", "#cc0000", "#009933", "#6600cc", "#ffaa00"];
+
+    return { 
+      suit: suitByLevel[level - 1], 
+      armor: armorByLevel[level - 1], 
+      cape: capeByLevel[level - 1],
+      swordBlade: swordBladeByLevel[level - 1],
+      swordHilt: swordHiltByLevel[level - 1]
+    };
   }
 
   const BASE_SPRITE = [
@@ -965,18 +975,24 @@
 
   function drawSprite(level, ox, oy, p, legFrame, mirrored) {
     const pal = getPalette(level);
-    const c = { skin: "#ffcc99", hair: "#663300", eye: "#000000", suit: pal.suit, armor: pal.armor, cape: pal.cape, boots: "#4a2c17", sword: "#ffffff", gold: "#ffcc00" };
+    const c = { 
+      skin: "#ffcc99", hair: "#663300", eye: "#000000", 
+      suit: pal.suit, armor: pal.armor, cape: pal.cape, boots: "#4a2c17", 
+      swordBlade: pal.swordBlade, swordHilt: pal.swordHilt, gold: "#ffcc00" 
+    };
     const sprite = BASE_SPRITE.concat(LEG_FRAMES[legFrame % 2], ["................"]);
 
     ctx.save();
     ctx.translate(ox, oy);
     if (mirrored) { ctx.translate(16 * p, 0); ctx.scale(-1, 1); }
 
+    // 背景のオーラ
     if (level >= 8) {
       ctx.save(); ctx.globalAlpha = 0.55; ctx.fillStyle = c.gold;
       ctx.beginPath(); ctx.arc(8 * p, 8 * p, 9 * p, 0, Math.PI * 2); ctx.fill(); ctx.restore();
     }
 
+    // ── キャラクター本体の描画関数 ──
     const drawBody = (isOutline) => {
       const color = isOutline ? "#000000" : null;
 
@@ -1005,30 +1021,57 @@
         }
       }
 
-      if (level >= 2) {
-        ctx.fillStyle = color || c.sword; ctx.fillRect(12 * p, 4 * p, 2 * p, 8 * p);
-        ctx.fillStyle = color || c.gold; ctx.fillRect(11 * p, 8 * p, 4 * p, 2 * p);
-      }
       if (level >= 8) {
         ctx.fillStyle = color || c.gold;
         ctx.fillRect(5 * p, 0, p, p * 0.6); ctx.fillRect(7 * p, 0, p, p * 0.6); ctx.fillRect(9 * p, 0, p, p * 0.6);
       }
     };
 
+    // ── 剣の描画関数 ──
+    const drawSword = (isOutline) => {
+      const color = isOutline ? "#000000" : null;
+      
+      ctx.save();
+      
+      // ★ 最高レベル（LV.8）かつ本体描画（アウトラインではない）のとき、黄金色の発光エフェクトを適用
+      if (level >= 8 && !isOutline) {
+        ctx.shadowColor = "#ffaa00"; // 黄金色の光
+        ctx.shadowBlur = 12;         // 発光の強さ
+      }
+      
+      ctx.fillStyle = color || c.swordBlade; ctx.fillRect(12 * p, 4 * p, 2 * p, 8 * p);
+      ctx.fillStyle = color || c.swordHilt;  ctx.fillRect(11 * p, 8 * p, 4 * p, 2 * p);
+      
+      ctx.restore();
+    };
+
+    // ドットの半分未満（2px）のシャープなアウトライン
     const out = 2; 
     const offsets = [
       [0, -out], [0, out], [-out, 0], [out, 0],
       [-out, -out], [out, -out], [-out, out], [out, out]
     ];
     
+    // ★ 1. キャラクター本体を描画（アウトライン → 色）
     for (const [dx, dy] of offsets) {
       ctx.save();
       ctx.translate(dx, dy);
       drawBody(true);
       ctx.restore();
     }
-
     drawBody(false);
+
+    // ★ 2. 剣を描画（アウトライン → 色）。体の上に剣のアウトラインが重なるため境界線ができる
+    if (level >= 2) {
+      for (const [dx, dy] of offsets) {
+        ctx.save();
+        ctx.translate(dx, dy);
+        drawSword(true);
+        ctx.restore();
+      }
+      drawSword(false);
+    }
+
     ctx.restore();
   }
 
@@ -1320,7 +1363,6 @@
     loadHero();
   }
 
-  // ★ カテゴリごとの専用評価メッセージ生成処理 ★
   function getRandomMessage(name, category, detail, timeMinutes) {
     const detailStr = detail ? `（${detail}）` : "";
     
