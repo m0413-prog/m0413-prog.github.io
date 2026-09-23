@@ -271,31 +271,28 @@
       outline: none;
     }
 
-    /* 左右ズレ解消＆文字押し広げ防止 */
+    /* ★ 完全に直列（縦1列）配置に修正 ★ */
     .radio-group {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px 4px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
       margin-bottom: 12px;
       background: #000;
       border: 2px solid #fff;
-      padding: 8px;
+      padding: 12px;
     }
 
     .radio-item {
       display: flex;
-      align-items: flex-start;
+      align-items: center; /* チェックボックスとテキストを垂直中央で揃える */
       cursor: pointer;
-      font-size: 11px;
-      line-height: 1.3;
-      padding: 2px;
+      font-size: 13px; /* 見やすいサイズ */
+      line-height: 1.4;
+      padding: 2px 4px;
       border-radius: 3px;
-      min-width: 0;
-      min-height: 40px;
     }
 
     .radio-item span {
-      min-width: 0;
       display: block;
     }
 
@@ -304,11 +301,13 @@
     }
 
     .radio-item input[type="radio"] {
-      margin-top: 3px;
-      margin-right: 4px;
+      margin-right: 8px;
+      transform: translateY(3px); /* ルビによるズレを調整 */
       accent-color: #ffcc00;
       cursor: pointer;
       flex-shrink: 0;
+      width: 16px;
+      height: 16px;
     }
 
     .example-box {
@@ -745,4 +744,774 @@
       osc2.frequency.setValueAtTime(150, now + 0.6);
       osc2.frequency.exponentialRampToValueAtTime(20, now + 2.5);
       gain2.gain.setValueAtTime(0, now + 0.6);
-      gain2
+      gain2.gain.setValueAtTime(0.3, now + 0.61); 
+      gain2.gain.exponentialRampToValueAtTime(0.001, now + 2.5);
+      osc2.connect(gain2);
+      gain2.connect(audioCtx.destination);
+      osc2.start(now + 0.6);
+      osc2.stop(now + 2.5);
+    } catch(e) {}
+  }
+
+  function play8BitSound(isHigh) {
+    try {
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'square';
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      const now = audioCtx.currentTime;
+      if (isHigh) {
+        osc.frequency.setValueAtTime(440, now);
+        osc.frequency.setValueAtTime(554.37, now + 0.1);
+        osc.frequency.setValueAtTime(659.25, now + 0.2);
+        osc.frequency.setValueAtTime(880, now + 0.3);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.6);
+        osc.start(now);
+        osc.stop(now + 0.6);
+      } else {
+        osc.frequency.setValueAtTime(200, now);
+        osc.frequency.setValueAtTime(150, now + 0.15);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+        osc.start(now);
+        osc.stop(now + 0.3);
+      }
+    } catch(e) {}
+  }
+
+  const SCENE_NAMES = [
+    "<ruby>村<rt>むら</rt></ruby>はずれ", "<ruby>町<rt>まち</rt></ruby>なか",
+    "<ruby>森<rt>もり</rt></ruby>の<ruby>入口<rt>いりぐち</rt></ruby>", "<ruby>深<rt>ふか</rt></ruby>い<ruby>森<rt>もり</rt></ruby>",
+    "<ruby>山道<rt>やまみち</rt></ruby>", "<ruby>洞窟<rt>どうくつ</rt></ruby>",
+    "<ruby>城下町<rt>じょうかまち</rt></ruby>", "<ruby>王<rt>おう</rt></ruby>の<ruby>城<rt>しろ</rt></ruby>"
+  ];
+  const horizon = 100;
+
+  function drawCloud(x, y) {
+    ctx.beginPath(); ctx.arc(x, y, 8, 0, Math.PI * 2); ctx.arc(x + 10, y - 4, 10, 0, Math.PI * 2); ctx.arc(x + 20, y, 8, 0, Math.PI * 2); ctx.fill();
+  }
+
+  function drawHouse(x, y, w, h, wallColor, roofColor) {
+    ctx.fillStyle = wallColor; ctx.fillRect(x, y, w, h);
+    ctx.fillStyle = roofColor;
+    ctx.beginPath(); ctx.moveTo(x - 4, y); ctx.lineTo(x + w / 2, y - 14); ctx.lineTo(x + w + 4, y); ctx.closePath(); ctx.fill();
+  }
+
+  function drawTree(x, groundY, size) {
+    ctx.fillStyle = "#5a3a22"; ctx.fillRect(x + size * 0.4, groundY - size * 0.3, size * 0.2, size * 0.3);
+    ctx.fillStyle = "#2e6b3e";
+    ctx.beginPath(); ctx.moveTo(x, groundY - size * 0.3); ctx.lineTo(x + size * 0.5, groundY - size * 1.1); ctx.lineTo(x + size, groundY - size * 0.3); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(x + size * 0.12, groundY - size * 0.6); ctx.lineTo(x + size * 0.5, groundY - size * 1.4); ctx.lineTo(x + size * 0.88, groundY - size * 0.6); ctx.closePath(); ctx.fill();
+  }
+
+  function drawStalactite(x, len) {
+    ctx.fillStyle = "#45454f";
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x + 10, 0); ctx.lineTo(x + 5, len); ctx.closePath(); ctx.fill();
+  }
+
+  function drawCrystal(x, y, color) {
+    ctx.save(); ctx.shadowColor = color; ctx.shadowBlur = 8; ctx.fillStyle = color;
+    ctx.beginPath(); ctx.moveTo(x, y - 10); ctx.lineTo(x + 6, y); ctx.lineTo(x, y + 10); ctx.lineTo(x - 6, y); ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
+
+  function drawCastleTower(x, y, w, h, color) {
+    ctx.fillStyle = color; ctx.fillRect(x, y, w, h);
+    ctx.fillStyle = "#d4af37"; ctx.fillRect(x - 2, y - 10, w + 4, 10);
+    ctx.fillStyle = "#c0392b";
+    ctx.beginPath(); ctx.moveTo(x + w / 2, y - 24); ctx.lineTo(x + w / 2, y - 10); ctx.lineTo(x + w / 2 + 14, y - 16); ctx.closePath(); ctx.fill();
+  }
+
+  function drawMountain(baseX, baseY, w, h, color) {
+    ctx.fillStyle = color;
+    ctx.beginPath(); ctx.moveTo(baseX, baseY); ctx.lineTo(baseX + w / 2, baseY - h); ctx.lineTo(baseX + w, baseY); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "#ffffff";
+    ctx.beginPath(); ctx.moveTo(baseX + w / 2 - 8, baseY - h + 14); ctx.lineTo(baseX + w / 2, baseY - h); ctx.lineTo(baseX + w / 2 + 8, baseY - h + 14); ctx.closePath(); ctx.fill();
+  }
+
+  function drawBackground(level) {
+    const w = canvas.width, h = canvas.height;
+    ctx.clearRect(0, 0, w, h);
+
+    if (level === 1) {
+      const g = ctx.createLinearGradient(0, 0, 0, horizon);
+      g.addColorStop(0, "#6ec6ff"); g.addColorStop(1, "#cdeeff");
+      ctx.fillStyle = g; ctx.fillRect(0, 0, w, horizon);
+      ctx.fillStyle = "#ffffff";
+      drawCloud(40, 22); drawCloud(150, 16); drawCloud(230, 30);
+      ctx.fillStyle = "#5cb85c"; ctx.fillRect(0, horizon, w, h - horizon);
+      drawHouse(232, horizon - 26, 26, 26, "#d98c4a", "#8b3a2f");
+    } else if (level === 2) {
+      const g = ctx.createLinearGradient(0, 0, 0, horizon);
+      g.addColorStop(0, "#ffb870"); g.addColorStop(1, "#ffe1b0");
+      ctx.fillStyle = g; ctx.fillRect(0, 0, w, horizon);
+      ctx.fillStyle = "#b8ae9c"; ctx.fillRect(0, horizon, w, h - horizon);
+      ctx.fillStyle = "#8f8574"; ctx.fillRect(0, horizon + 20, w, 6);
+      const houseColors = [["#e0a458", "#8c4a2f"], ["#c9d6df", "#5c6b73"], ["#e3b7a0", "#7a4a3a"]];
+      let hx = 6;
+      for (let i = 0; i < 4; i++) {
+        drawHouse(hx, horizon - 24, 26, 26, houseColors[i%3][0], houseColors[i%3][1]);
+        hx += 72;
+      }
+    } else if (level === 3) {
+      const g = ctx.createLinearGradient(0, 0, 0, horizon);
+      g.addColorStop(0, "#8fd6a0"); g.addColorStop(1, "#c7ecc9");
+      ctx.fillStyle = g; ctx.fillRect(0, 0, w, horizon);
+      ctx.fillStyle = "#3f9a4e"; ctx.fillRect(0, horizon, w, h - horizon);
+      [20, 110, 200, 260].forEach(x => drawTree(x, horizon - 4, 26));
+    } else if (level === 4) {
+      const g = ctx.createLinearGradient(0, 0, 0, horizon);
+      g.addColorStop(0, "#1c3a30"); g.addColorStop(1, "#335c46");
+      ctx.fillStyle = g; ctx.fillRect(0, 0, w, horizon);
+      ctx.fillStyle = "#132a1c"; ctx.fillRect(0, horizon, w, h - horizon);
+      [4, 34, 64, 96, 128, 158, 190, 220, 250, 275].forEach((x, i) => drawTree(x, horizon - 2, i % 2 === 0 ? 36 : 28));
+    } else if (level === 5) {
+      const g = ctx.createLinearGradient(0, 0, 0, horizon);
+      g.addColorStop(0, "#8fb8e6"); g.addColorStop(1, "#e6d3b3");
+      ctx.fillStyle = g; ctx.fillRect(0, 0, w, horizon);
+      drawMountain(-10, horizon, 140, 60, "#7c93a8"); drawMountain(110, horizon, 150, 76, "#647d94"); drawMountain(220, horizon, 120, 54, "#8393a4");
+      ctx.fillStyle = "#a99274"; ctx.fillRect(0, horizon, w, h - horizon);
+      ctx.fillStyle = "#c8b494"; ctx.fillRect(0, horizon + 16, w, 8);
+    } else if (level === 6) {
+      ctx.fillStyle = "#14141f"; ctx.fillRect(0, 0, w, horizon);
+      ctx.fillStyle = "#33333d"; ctx.fillRect(0, horizon, w, h - horizon);
+      [20, 60, 100, 150, 190, 230, 260].forEach((x, i) => drawStalactite(x, i % 2 === 0 ? 26 : 16));
+      drawCrystal(70, horizon - 4, "#66e0ff"); drawCrystal(180, horizon - 2, "#c77dff"); drawCrystal(230, horizon - 6, "#66e0ff");
+    } else if (level === 7) {
+      const g = ctx.createLinearGradient(0, 0, 0, horizon);
+      g.addColorStop(0, "#6a4a8a"); g.addColorStop(1, "#e0a8c0");
+      ctx.fillStyle = g; ctx.fillRect(0, 0, w, horizon);
+      ctx.fillStyle = "#7a7a8c"; ctx.fillRect(0, horizon - 30, w, 30);
+      drawCastleTower(6, horizon - 60, 22, 60, "#8a8a9a"); drawCastleTower(260, horizon - 60, 22, 60, "#8a8a9a");
+      ctx.fillStyle = "#b8ae9c"; ctx.fillRect(0, horizon, w, h - horizon);
+      const houseColors = [["#e0a458", "#8c4a2f"], ["#c9a0d8", "#5c3a6b"]];
+      let hx2 = 30;
+      for (let i = 0; i < 3; i++) {
+        drawHouse(hx2, horizon - 22, 22, 22, houseColors[i%2][0], houseColors[i%2][1]);
+        hx2 += 80;
+      }
+    } else {
+      const g = ctx.createLinearGradient(0, 0, 0, horizon);
+      g.addColorStop(0, "#190033"); g.addColorStop(0.6, "#400066"); g.addColorStop(1, "#800080");
+      ctx.fillStyle = g; ctx.fillRect(0, 0, w, horizon);
+
+      const stars = [[20,15], [60,35], [95,12], [140,28], [190,10], [225,32], [270,18]];
+      ctx.fillStyle = "#ffff99";
+      stars.forEach(([sx, sy]) => { ctx.fillRect(sx, sy, 2, 2); ctx.fillRect(sx-1, sy+1, 4, 1); ctx.fillRect(sx+1, sy-1, 1, 4); });
+
+      ctx.fillStyle = "#500a18"; ctx.fillRect(0, horizon, w, h - horizon);
+      ctx.fillStyle = "#9e1b32"; ctx.fillRect(0, horizon + 6, w, h - horizon - 6);
+      ctx.fillStyle = "#ffd700"; ctx.fillRect(0, horizon, w, 4); ctx.fillRect(0, horizon + 6, w, 2);
+      ctx.fillStyle = "#3d3250"; ctx.fillRect(40, horizon - 75, 208, 75);
+
+      ctx.fillStyle = "#2c223c";
+      for (let y = horizon - 70; y < horizon; y += 12) {
+        for (let x = 45; x < 240; x += 24) { ctx.fillRect(x + ((y % 24 === 0) ? 12 : 0), y, 10, 4); }
+      }
+
+      drawCastleTower(10, horizon - 85, 36, 85, "#4d4066"); drawCastleTower(242, horizon - 85, 36, 85, "#4d4066");
+
+      const gateGrad = ctx.createLinearGradient(0, horizon - 50, 0, horizon);
+      gateGrad.addColorStop(0, "#d4af37"); gateGrad.addColorStop(1, "#8b6508");
+      ctx.fillStyle = gateGrad; ctx.fillRect(114, horizon - 50, 60, 50);
+
+      ctx.beginPath(); ctx.arc(144, horizon - 50, 30, Math.PI, 0); ctx.fill();
+      ctx.fillStyle = "#1a0f00"; ctx.fillRect(124, horizon - 40, 40, 40);
+      ctx.beginPath(); ctx.arc(144, horizon - 40, 20, Math.PI, 0); ctx.fill();
+
+      ctx.fillStyle = "#ffcc00"; ctx.fillRect(52, horizon - 65, 12, 28); ctx.fillRect(224, horizon - 65, 12, 28);
+      ctx.fillStyle = "#cc0000"; ctx.fillRect(54, horizon - 63, 8, 24); ctx.fillRect(226, horizon - 63, 8, 24);
+
+      ctx.fillStyle = "#00ffff"; ctx.fillRect(80, horizon - 55, 14, 22); ctx.fillRect(194, horizon - 55, 14, 22);
+      ctx.fillStyle = "#ff00ff"; ctx.fillRect(83, horizon - 52, 8, 16); ctx.fillRect(197, horizon - 52, 8, 16);
+
+      drawCrystal(144, horizon - 65, "#00ffff");
+    }
+  }
+
+  function drawGoalMarker() {
+    const gx = WALK_MAX_X + 16 * SPRITE_P + 4;
+    ctx.fillStyle = "#5a3a22"; ctx.fillRect(gx, horizon - 38, 4, 38);
+    ctx.fillStyle = "#ffcc00";
+    ctx.beginPath(); ctx.moveTo(gx + 4, horizon - 38); ctx.lineTo(gx + 18, horizon - 32); ctx.lineTo(gx + 4, horizon - 26); ctx.closePath(); ctx.fill();
+  }
+
+  const LEVEL_THRESHOLDS = [0, 40, 100, 190, 320, 500, 730, 1000];
+  const MAX_POWER = 1500; 
+
+  function levelFromPower(p) {
+    let lvl = 1;
+    for (let i = 1; i < LEVEL_THRESHOLDS.length; i++) {
+      if (p >= LEVEL_THRESHOLDS[i]) lvl = i + 1;
+    }
+    return lvl;
+  }
+
+  function getPalette(level) {
+    const suitByLevel = ["#33cc33", "#2ea86e", "#00cc99", "#00a8c0", "#0066ff", "#5b3df5", "#aa00ff", "#2563eb"];
+    const armorByLevel = ["#999999", "#aaaaaa", "#bfbfbf", "#c9b37f", "#d4af37", "#e0c040", "#ffd700", "#ffd700"];
+    const capeByLevel = [null, null, null, null, null, "#aa00ff", "#c724a8", "#ff0055"];
+    return { suit: suitByLevel[level - 1], armor: armorByLevel[level - 1], cape: capeByLevel[level - 1] };
+  }
+
+  const BASE_SPRITE = [
+    "................", ".....HHHHHH.....", "....HHHHHHHH....", "....SSSSSSSS....",
+    "....SSESSSES....", "....SSSSSSSS....", ".....SMMMM......", "....AAASSAAA....",
+    "...AAAASSSAAA...", "...A.LLLLLL.A...", ".....LLLLLL.....", ".....LLLLLL....."
+  ];
+  const LEG_FRAMES = [
+    [".....LL..LL.....", ".....LL..LL.....", "....BBB..BBB...."],
+    ["....LL....LL....", "....LL....LL....", "...BBB....BBB..."]
+  ];
+
+  function drawSprite(level, ox, oy, p, legFrame, mirrored) {
+    const pal = getPalette(level);
+    const c = { skin: "#ffcc99", hair: "#663300", eye: "#000000", suit: pal.suit, armor: pal.armor, cape: pal.cape, boots: "#4a2c17", sword: "#ffffff", gold: "#ffcc00" };
+    const sprite = BASE_SPRITE.concat(LEG_FRAMES[legFrame % 2], ["................"]);
+
+    ctx.save();
+    ctx.translate(ox, oy);
+    if (mirrored) { ctx.translate(16 * p, 0); ctx.scale(-1, 1); }
+
+    if (level >= 8) {
+      ctx.save(); ctx.globalAlpha = 0.55; ctx.fillStyle = c.gold;
+      ctx.beginPath(); ctx.arc(8 * p, 8 * p, 9 * p, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+    }
+
+    const drawBody = (isOutline) => {
+      const color = isOutline ? "#000000" : null;
+
+      if (c.cape) {
+        ctx.fillStyle = color || c.cape;
+        ctx.beginPath(); ctx.moveTo(3 * p, 6 * p); ctx.lineTo(13 * p, 6 * p); ctx.lineTo(15 * p, 14.5 * p); ctx.lineTo(1 * p, 14.5 * p); ctx.closePath(); ctx.fill();
+      }
+
+      for (let r = 0; r < 16; r++) {
+        for (let col = 0; col < 16; col++) {
+          const char = sprite[r][col];
+          if (char === ".") continue;
+          
+          if (color) {
+            ctx.fillStyle = color;
+          } else {
+            if (char === "H") ctx.fillStyle = c.hair;
+            else if (char === "S") ctx.fillStyle = c.skin;
+            else if (char === "E") ctx.fillStyle = c.eye;
+            else if (char === "M") ctx.fillStyle = "#ff6666";
+            else if (char === "A") ctx.fillStyle = c.armor;
+            else if (char === "L") ctx.fillStyle = c.suit;
+            else if (char === "B") ctx.fillStyle = c.boots;
+          }
+          ctx.fillRect(col * p, r * p, p, p);
+        }
+      }
+
+      if (level >= 2) {
+        ctx.fillStyle = color || c.sword; ctx.fillRect(12 * p, 4 * p, 2 * p, 8 * p);
+        ctx.fillStyle = color || c.gold; ctx.fillRect(11 * p, 8 * p, 4 * p, 2 * p);
+      }
+      if (level >= 8) {
+        ctx.fillStyle = color || c.gold;
+        ctx.fillRect(5 * p, 0, p, p * 0.6); ctx.fillRect(7 * p, 0, p, p * 0.6); ctx.fillRect(9 * p, 0, p, p * 0.6);
+      }
+    };
+
+    // ドットの半分未満（2px）のシャープなアウトライン
+    const out = 2; 
+    const offsets = [
+      [0, -out], [0, out], [-out, 0], [out, 0],
+      [-out, -out], [out, -out], [-out, out], [out, out]
+    ];
+    
+    for (const [dx, dy] of offsets) {
+      ctx.save();
+      ctx.translate(dx, dy);
+      drawBody(true);
+      ctx.restore();
+    }
+
+    drawBody(false);
+    ctx.restore();
+  }
+
+  const SPRITE_P = 5;
+  const WALK_MIN_X = 20;
+  const WALK_MAX_X = canvas.width - 24 - 16 * SPRITE_P;
+  const WALK_SPEED = 55;
+  let walkX = WALK_MIN_X;
+  let targetX = WALK_MIN_X;
+  let legFrame = 0;
+  let legToggleAccum = 0;
+  let lastFrameTs = 0;
+  let bounceStart = null;
+  let bounceDuration = 0;
+  let loopStarted = false;
+
+  function triggerBounce(duration) {
+    bounceStart = performance.now();
+    bounceDuration = duration;
+  }
+
+  function progressRatio() {
+    const lvl = currentLevel;
+    if (lvl >= 8) {
+      const baseVal = LEVEL_THRESHOLDS[7]; 
+      return Math.max(0, Math.min(1, (state.power - baseVal) / (MAX_POWER - baseVal)));
+    }
+    const lower = LEVEL_THRESHOLDS[lvl - 1];
+    const upper = LEVEL_THRESHOLDS[lvl];
+    return Math.max(0, Math.min(1, (state.power - lower) / (upper - lower)));
+  }
+
+  function updateTargetX() {
+    targetX = WALK_MIN_X + progressRatio() * (WALK_MAX_X - WALK_MIN_X);
+  }
+
+  function updatePowerDisplay() {
+    const todayPowerEl = document.getElementById('todayPower');
+    const canvasEl = document.getElementById('characterCanvas');
+    
+    todayPowerEl.textContent = state.todayPower;
+    document.getElementById('yesterdayPower').textContent = state.yesterdayPower;
+
+    if (state.surpassedToday) {
+      todayPowerEl.classList.add('power-surpassed');
+      canvasEl.classList.add('hero-awakened');
+    } else {
+      todayPowerEl.classList.remove('power-surpassed');
+      canvasEl.classList.remove('hero-awakened');
+      auraEffect.clear(); 
+    }
+  }
+
+  function updateXpUI() {
+    const fill = document.getElementById('xpBarFill');
+    const label = document.getElementById('xpLabel');
+    if (currentLevel >= 8) {
+      const remaining = Math.max(0, MAX_POWER - state.power);
+      const pct = Math.min(100, Math.floor(((state.power - 1000) / (MAX_POWER - 1000)) * 100));
+      fill.style.width = pct + '%';
+      if (remaining === 0) {
+        label.innerHTML = 'カンスト！ でんせつのヒーロー達成！';
+      } else {
+        label.innerHTML = `ゴールまで あと ${remaining} pt`;
+      }
+    } else {
+      const upper = LEVEL_THRESHOLDS[currentLevel];
+      const lower = LEVEL_THRESHOLDS[currentLevel - 1];
+      const pct = Math.min(100, Math.floor(((state.power - lower) / (upper - lower)) * 100));
+      fill.style.width = pct + '%';
+      label.innerHTML = `つぎのレベルまで あと ${Math.max(0, upper - state.power)} pt`;
+    }
+  }
+
+  function renderLoop(ts) {
+    if (!lastFrameTs) lastFrameTs = ts;
+    let dt = ts - lastFrameTs;
+    if (dt > 100) dt = 16; 
+    lastFrameTs = ts;
+
+    if (Math.abs(targetX - walkX) > 0.5) {
+      const step = WALK_SPEED * (dt / 1000);
+      walkX = (targetX > walkX) ? Math.min(targetX, walkX + step) : Math.max(targetX, walkX - step);
+      legToggleAccum += dt;
+      if (legToggleAccum > 140) { 
+        legFrame = legFrame === 0 ? 1 : 0; 
+        legToggleAccum = 0; 
+      }
+    } else {
+      walkX = targetX;
+      legFrame = 0;
+    }
+
+    let bounceOffset = 0;
+    if (bounceStart !== null) {
+      const elapsed = ts - bounceStart;
+      if (elapsed < bounceDuration) {
+        bounceOffset = -Math.abs(Math.sin((elapsed / bounceDuration) * Math.PI)) * 14;
+      } else {
+        bounceStart = null;
+      }
+    }
+
+    drawBackground(currentLevel);
+    drawGoalMarker();
+    
+    const spriteY = horizon - 15 * SPRITE_P + bounceOffset;
+    drawSprite(currentLevel, walkX, spriteY, SPRITE_P, legFrame, false);
+
+    if (state.surpassedToday) {
+      auraEffect.updateAndDraw();
+    }
+
+    fireworks.updateAndDraw();
+    requestAnimationFrame(renderLoop);
+  }
+
+  function startAnimationLoop() {
+    if (loopStarted) return;
+    loopStarted = true;
+    requestAnimationFrame(renderLoop);
+  }
+
+  function updateTitle(lvl) {
+    const titles = [
+      "LV.1 <ruby>見習<rt>みなら</rt></ruby>い<ruby>勇者<rt>ゆうしゃ</rt></ruby>",
+      "LV.2 かけだし<ruby>戦士<rt>せんし</rt></ruby>",
+      "LV.3 もりの<ruby>狩人<rt>かりうど</rt></ruby>",
+      "LV.4 <ruby>森<rt>もり</rt></ruby>の<ruby>賢者<rt>けんじゃ</rt></ruby>",
+      "LV.5 <ruby>山<rt>やま</rt></ruby>の<ruby>探検家<rt>たんけんか</rt></ruby>",
+      "LV.6 <ruby>洞窟<rt>どうくつ</rt></ruby>の<ruby>勇士<rt>ゆうし</rt></ruby>",
+      "LV.7 <ruby>王国<rt>おうこく</rt></ruby>の<ruby>騎士<rt>きし</rt></ruby>",
+      "LV.8 でんせつのヒーロー"
+    ];
+    document.getElementById('heroTitle').innerHTML = titles[lvl - 1] + `（${SCENE_NAMES[lvl - 1]}）`;
+  }
+
+  function renderHistory() {
+    const list = document.getElementById('historyList');
+    const count = document.getElementById('historyCount');
+    const entries = state.history.slice(0, 8);
+    count.innerHTML = state.history.length > 0 ? `<ruby>全<rt>ぜん</rt></ruby>${state.history.length}<ruby>件<rt>けん</rt></ruby>` : '';
+    if (entries.length === 0) {
+      list.innerHTML = '<div class="history-empty">まだ<ruby>記録<rt>きろく</rt></ruby>がありません</div>';
+      return;
+    }
+    list.innerHTML = entries.map(e => `
+      <div class="history-entry">
+        <div class="history-info">
+          <span class="history-date">${e.date || ''}</span>
+          <span>${e.label}</span>
+        </div>
+        <span class="history-pt">+${e.bonus}PT</span>
+      </div>
+    `).join('');
+  }
+
+  function updateParentLockUI() {
+    const lockStatusEl = document.getElementById('lockStatus');
+    const btn = document.getElementById('powerUpBtn');
+
+    if (!state.parentLock) {
+      lockStatusEl.innerHTML = "🔓 プレイ<ruby>制限<rt>せいげん</rt></ruby>: <ruby>無制限<rt>むせいげん</rt></ruby>";
+    } else {
+      lockStatusEl.innerHTML = "🔒 プレイ<ruby>制限<rt>せいげん</rt></ruby>: <ruby>各<rt>かく</rt></ruby>カテゴリ2<ruby>回<rt>かい</rt></ruby>まで";
+    }
+    btn.disabled = false;
+  }
+
+  function toggleParentControl() {
+    const inputPin = prompt(`【保護者確認】暗証番号を入力してください。（ヒント：ミライ）`);
+    if (inputPin === PARENT_PIN) {
+      state.parentLock = !state.parentLock;
+      const nextModeText = state.parentLock ? "「各カテゴリ2回まで」" : "「無制限」";
+      alert(`プレイ制限を ${nextModeText} に切り替えました。`);
+      updateParentLockUI();
+      saveHero();
+    } else if (inputPin !== null) {
+      alert("暗証番号が違います。");
+    }
+  }
+
+  function testFirework() {
+    fireworks.start();
+    
+    const tp = document.getElementById('todayPower');
+    const canvasEl = document.getElementById('characterCanvas');
+    tp.classList.add('power-surpassed');
+    canvasEl.classList.add('hero-awakened');
+    
+    const originalSurpassed = state.surpassedToday;
+    state.surpassedToday = true;
+
+    setTimeout(() => {
+      if (!originalSurpassed) {
+        state.surpassedToday = false;
+        tp.classList.remove('power-surpassed');
+        canvasEl.classList.remove('hero-awakened');
+        auraEffect.clear();
+      }
+    }, 4000);
+  }
+
+  function heroStorageKey(name) {
+    return 'hero:' + name.trim();
+  }
+
+  function loadHero() {
+    const rawName = document.getElementById('heroName').value;
+    const name = escapeHtml(rawName.trim() || 'ヒーロー');
+    const key = heroStorageKey(name);
+    
+    document.getElementById('powerUpBtn').disabled = true;
+
+    try {
+      const value = localStorage.getItem(key);
+      if (value) {
+        const parsed = JSON.parse(value);
+        state = {
+          power: parsed.power || 0,
+          todayPower: parsed.todayPower || 0,
+          yesterdayPower: parsed.yesterdayPower || 0,
+          surpassedToday: parsed.surpassedToday || false,
+          history: parsed.history || [],
+          parentLock: parsed.parentLock !== undefined ? parsed.parentLock : false,
+          categoryCounts: parsed.categoryCounts || {},
+          lastPlayDate: parsed.lastPlayDate || "",
+          lastSkill: parsed.lastSkill || "",
+          lastMsg: parsed.lastMsg || ""
+        };
+      } else {
+        state = { power: 0, todayPower: 0, yesterdayPower: 0, surpassedToday: false, history: [], parentLock: false, categoryCounts: {}, lastPlayDate: "", lastSkill: "", lastMsg: "" };
+      }
+    } catch (e) {
+      state = { power: 0, todayPower: 0, yesterdayPower: 0, surpassedToday: false, history: [], parentLock: false, categoryCounts: {}, lastPlayDate: "", lastSkill: "", lastMsg: "" };
+    }
+
+    const today = getTodayStr();
+    if (state.lastPlayDate !== today) {
+      if (state.lastPlayDate) {
+        state.yesterdayPower = state.todayPower;
+      }
+      state.todayPower = 0;
+      state.surpassedToday = false; 
+      state.categoryCounts = {};
+      state.lastPlayDate = today;
+    }
+
+    currentHeroKey = key;
+    currentLevel = levelFromPower(state.power);
+    updatePowerDisplay();
+    updateTitle(currentLevel);
+    updateXpUI();
+    walkX = WALK_MIN_X;
+    updateTargetX();
+    startAnimationLoop();
+    renderHistory();
+    updateParentLockUI();
+    
+    document.getElementById('loadingNote').style.display = 'none';
+
+    setTimeout(() => { updateTitle(currentLevel); }, 4000);
+  }
+
+  function saveHero() {
+    if (!currentHeroKey) return;
+    localStorage.setItem(currentHeroKey, JSON.stringify(state));
+  }
+
+  function resetHero() {
+    if (!currentHeroKey) return;
+    if (!confirm('このヒーローの記録をすべて消しますか？')) return;
+    localStorage.removeItem(currentHeroKey);
+
+    const firstRadio = document.querySelector('input[name="actionCategory"][value="宿題・勉強"]');
+    if (firstRadio) firstRadio.checked = true;
+
+    document.getElementById('actionTime').value = "5";
+    document.getElementById('actionDetail').value = "";
+
+    const msgBox = document.getElementById('msgBox');
+    msgBox.style.display = 'none';
+    document.getElementById('skillName').innerHTML = "";
+    document.getElementById('msgContent').innerHTML = "";
+    
+    state.surpassedToday = false;
+    updatePowerDisplay();
+
+    loadHero();
+  }
+
+  function getRandomMessage(name, category, detail, timeMinutes) {
+    const detailStr = detail ? `（${detail}）` : "";
+    const msgPool = [
+      `【<ruby>評価<rt>ひょうか</rt></ruby>】${timeMinutes}<ruby>分間<rt>ふんかん</rt></ruby>、<ruby>集中<rt>しゅうちゅう</rt></ruby>して「${category}${detailStr}」に<ruby>取<rt>と</rt></ruby>り<ruby>組<rt>く</rt></ruby>んだ！${name}の<ruby>頑張<rt>がんば</rt></ruby>りでパワーが<ruby>満ち溢<rt>みちあふ</rt></ruby>れる！`,
+      `【<ruby>評価<rt>ひょうか</rt></ruby>】すさまじい<ruby>集中力<rt>しゅうちゅうりょく</rt></ruby>だ！${timeMinutes}<ruby>分間<rt>ふんかん</rt></ruby>の「${category}${detailStr}」で${name}の<ruby>攻撃力<rt>こうげきりょく</rt></ruby>が<ruby>大幅<rt>おおはば</rt></ruby>アップ！その<ruby>調子<rt>ちょうし</rt></ruby>で<ruby>突<rt>つ</rt></ruby>き<ruby>進<rt>すす</rt></ruby>め！`,
+      `【<ruby>評価<rt>ひょうか</rt></ruby>】<ruby>素晴<rt>すば</rt></ruby>らしい<ruby>継続力<rt>けいぞくりょく</rt></ruby>！${timeMinutes}<ruby>分間<rt>ふんかん</rt></ruby>の<ruby>努力<rt>どりょく</rt></ruby>「${category}${detailStr}」がヒーローの<ruby>大<rt>おお</rt></ruby>きな<ruby>糧<rt>かて</rt></ruby>となった！<ruby>新<rt>あたら</rt></ruby>たな<ruby>高<rt>たか</rt></ruby>みへ！`,
+      `【<ruby>評価<rt>ひょうか</rt></ruby>】<ruby>伝説<rt>でんせつ</rt></ruby>の<ruby>勇者<rt>ゆうしゃ</rt></ruby>への<ruby>第一歩<rt>だいいっぽ</rt></ruby>！${timeMinutes}<ruby>分間<rt>ふんかん</rt></ruby>じっくり「${category}${detailStr}」をやり<ruby>遂<rt>と</rt></ruby>げたぞ！${name}の<ruby>成長<rt>せいちょう</rt></ruby>は<ruby>誰<rt>だれ</rt></ruby>にも<ruby>止<rt>と</rt></ruby>められない！`
+    ];
+
+    let availableMsgs = msgPool.filter(m => m !== state.lastMsg);
+    if (availableMsgs.length === 0) availableMsgs = msgPool;
+    const selectedMsg = availableMsgs[Math.floor(Math.random() * availableMsgs.length)];
+    state.lastMsg = selectedMsg;
+    return selectedMsg;
+  }
+
+  function executePowerUp() {
+    const today = getTodayStr();
+    if (state.lastPlayDate !== today) {
+      if (state.lastPlayDate) {
+        state.yesterdayPower = state.todayPower;
+      }
+      state.todayPower = 0;
+      state.surpassedToday = false;
+      state.categoryCounts = {};
+      state.lastPlayDate = today;
+      updatePowerDisplay();
+    }
+
+    const selectedRadio = document.querySelector('input[name="actionCategory"]:checked');
+    const category = selectedRadio ? selectedRadio.value : "宿題・勉強";
+
+    const catRubyNames = {
+      "宿題・勉強": "「【<ruby>学習<rt>がくしゅう</rt></ruby>】<ruby>宿題<rt>しゅくだい</rt></ruby>・<ruby>勉強<rt>べんきょう</rt></ruby>」",
+      "お手伝い": "「【<ruby>貢献<rt>こうけん</rt></ruby>】お<ruby>手伝<rt>てつだ</rt></ruby>い・<ruby>掃除<rt>そうじ</rt></ruby>」",
+      "運動・健康": "「【<ruby>体力<rt>たいりょく</rt></ruby>】<ruby>運動<rt>うんどう</rt></ruby>・<ruby>早<rt>はや</rt></ruby><ruby>起<rt>お</rt></ruby>き」",
+      "読書": "「【<ruby>知識<rt>ちしき</rt></ruby>】<ruby>読書<rt>どくしょ</rt></ruby>・<ruby>図鑑<rt>ずかん</rt></ruby>」"
+    };
+
+    const msgBox = document.getElementById('msgBox');
+    const msgTitle = document.getElementById('msgTitle');
+
+    if (state.parentLock) {
+      const currentCount = state.categoryCounts[category] || 0;
+      if (currentCount >= 2) {
+        msgBox.style.borderColor = "#ff4d4d";
+        msgTitle.style.color = "#ff4d4d";
+        msgTitle.innerHTML = "⚠️ <ruby>回数<rt>かいすう</rt></ruby><ruby>制限<rt>せいげん</rt></ruby>のおしらせ";
+        document.getElementById('skillName').innerHTML = "";
+        document.getElementById('msgContent').innerHTML = `${catRubyNames[category] || category}は<ruby>本日<rt>ほんじつ</rt></ruby>すでに2<ruby>回<rt>かい</rt></ruby>おこないました。<ruby>他<rt>ほか</rt></ruby>のカテゴリーを<ruby>選<rt>えら</rt></ruby>ぶか、<ruby>明日<rt>あした</rt></ruby>また<ruby>挑戦<rt>ちょうせん</rt></ruby>してね！`;
+        msgBox.style.display = 'block';
+        msgBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        return;
+      }
+    }
+
+    msgBox.style.borderColor = "#ffffff";
+    msgTitle.style.color = "#ffcc00";
+
+    const btn = document.getElementById('powerUpBtn');
+    btn.disabled = true;
+
+    const timeMinutes = parseInt(document.getElementById('actionTime').value) || 5;
+    const rawDetail = document.getElementById('actionDetail').value.trim();
+    const rawName = document.getElementById('heroName').value;
+    
+    const detail = escapeHtml(rawDetail);
+    const name = escapeHtml(rawName || "ヒーロー");
+
+    const skillsMap = {
+      "宿題・勉強": [
+        "<ruby>集中<rt>しゅうちゅう</rt></ruby>ドリル<ruby>斬<rt>ぎ</rt></ruby>り",
+        "ブレイン・スマッシュ",
+        "<ruby>閃光<rt>せんこう</rt></ruby>スタディ・バースト",
+        "<ruby>知恵<rt>ちえ</rt></ruby>のメテオストライク"
+      ],
+      "お手伝い": [
+        "ピカピカクリーンブレイク",
+        "おたすけハリケーン",
+        "サンキュー・エクスプロージョン",
+        "<ruby>奉仕<rt>ほうし</rt></ruby>のホーリーレイ"
+      ],
+      "運動・健康": [
+        "<ruby>爆速<rt>ばくそく</rt></ruby>ダッシュストライク",
+        "マッスル・ボルケーノ",
+        "<ruby>健康<rt>けんこう</rt></ruby>パワースマッシュ",
+        "エナジー・トルネード"
+      ],
+      "読書": [
+        "ナレッジウェーブ",
+        "イマジネーション・ダイブ",
+        "ブック・オブ・ジャッジメント",
+        "<ruby>知能<rt>ちのう</rt></ruby>フレア"
+      ]
+    };
+
+    let skillPool = skillsMap[category] || ["ミライヒーロー<ruby>斬<rt>ぎ</rt></ruby>り"];
+    let availableSkills = skillPool.filter(s => s !== state.lastSkill);
+    if (availableSkills.length === 0) availableSkills = skillPool;
+    const skill = availableSkills[Math.floor(Math.random() * availableSkills.length)];
+    state.lastSkill = skill;
+
+    state.categoryCounts[category] = (state.categoryCounts[category] || 0) + 1;
+
+    let fireworkTriggered = false;
+    const beforePower = state.todayPower;
+    
+    const bonus = Math.floor(timeMinutes * 0.45) + 3;
+    state.power += bonus;
+    state.todayPower += bonus;
+
+    if (state.yesterdayPower > 0 && !state.surpassedToday) {
+      if (beforePower <= state.yesterdayPower && state.todayPower > state.yesterdayPower) {
+        state.surpassedToday = true;
+        fireworkTriggered = true;
+      }
+    }
+
+    let title = `🔥 パワーアップ！ (+${bonus} PT)`;
+    let msg = getRandomMessage(name, category, detail, timeMinutes);
+
+    if (fireworkTriggered) {
+      fireworks.start();
+      title = `🎇 <ruby>昨日超越<rt>きのうちょうえつ</rt></ruby>！ (+${bonus} PT)`;
+      msg = `【<ruby>大突破<rt>だいとっぱ</rt></ruby>】すさまじい<ruby>努力<rt>どりょく</rt></ruby>だ！${name}の<ruby>頑張<rt>がんば</rt></ruby>りが<ruby>昨日<rt>きのう</rt></ruby>の<ruby>自分<rt>じぶん</rt></ruby>（${state.yesterdayPower}PT）を<ruby>見事<rt>みごと</rt></ruby>に<ruby>超<rt>こ</rt></ruby>え、<ruby>長岡<rt>ながおか</rt></ruby>の<ruby>夜空<rt>よぞら</rt></ruby>に<ruby>大輪<rt>たいりん</rt></ruby>の<ruby>祝福花火<rt>しゅくふくはなび</rt></ruby>が<ruby>打<rt>う</rt></ruby>ち<ruby>上<rt>あ</rt></ruby>がったぞ！！`;
+    } else {
+      play8BitSound(true);
+    }
+
+    const catLabels = {
+      "宿題・勉強": "<ruby>宿題<rt>しゅくだい</rt></ruby>・<ruby>勉強<rt>べんきょう</rt></ruby>",
+      "お手伝い": "お<ruby>手伝<rt>てつだ</rt></ruby>い",
+      "運動・健康": "<ruby>運動<rt>うんどう</rt></ruby>・<ruby>健康<rt>けんこう</rt></ruby>",
+      "読書": "<ruby>読書<rt>どくしょ</rt></ruby>"
+    };
+
+    state.history.unshift({
+      date: getDateTimeStr(),
+      label: `${catLabels[category] || category}${detail ? '（' + detail + '）' : ''} / ${timeMinutes}<ruby>分<rt>ふん</rt></ruby>`,
+      bonus: bonus
+    });
+    state.history = state.history.slice(0, 30);
+
+    updatePowerDisplay();
+    msgTitle.innerHTML = title;
+    document.getElementById('skillName').innerHTML = `⚔️ ひっさつわざ：「${skill}」`;
+    document.getElementById('msgContent').innerHTML = msg;
+    msgBox.style.display = 'block';
+    
+    msgBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+    renderHistory();
+
+    const stage = document.getElementById('stage');
+    const newLevel = levelFromPower(state.power);
+    const leveledUp = newLevel > currentLevel;
+
+    stage.classList.add(leveledUp ? 'leveling-up' : 'powering-up');
+    triggerBounce(leveledUp ? 1600 : 900);
+    if (leveledUp) {
+      const banner = document.getElementById('levelupBanner');
+      banner.innerHTML = `★ ${SCENE_NAMES[newLevel - 1]}に<ruby>到着<rt>とうちゃく</rt></ruby>！レベルアップ！ ★`;
+      banner.style.display = 'block';
+      banner.style.animation = 'none';
+      void banner.offsetWidth;
+      banner.style.animation = '';
+      walkX = WALK_MIN_X;
+    }
+
+    currentLevel = newLevel;
+    updateTitle(currentLevel);
+    updateXpUI();
+    updateTargetX();
+
+    setTimeout(() => {
+      stage.classList.remove('powering-up');
+      stage.classList.remove('leveling-up');
+    }, leveledUp ? 1600 : 1200);
+
+    saveHero();
+    updateParentLockUI();
+  }
+
+  document.getElementById('heroName').addEventListener('change', loadHero);
+
+  loadHero();
+</script>
+
+</body>
+</html>
