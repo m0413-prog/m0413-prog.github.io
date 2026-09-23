@@ -271,29 +271,25 @@
       outline: none;
     }
 
-    /* ★ 完全に直列（縦1列）配置に修正 ★ */
+    /* 直列（縦1列）配置 */
     .radio-group {
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 6px;
       margin-bottom: 12px;
       background: #000;
       border: 2px solid #fff;
-      padding: 12px;
+      padding: 8px;
     }
 
     .radio-item {
       display: flex;
-      align-items: center; /* チェックボックスとテキストを垂直中央で揃える */
+      align-items: center; 
       cursor: pointer;
-      font-size: 13px; /* 見やすいサイズ */
-      line-height: 1.4;
+      font-size: 13px; 
+      line-height: 1.8;
       padding: 2px 4px;
       border-radius: 3px;
-    }
-
-    .radio-item span {
-      display: block;
     }
 
     .radio-item:hover {
@@ -302,12 +298,11 @@
 
     .radio-item input[type="radio"] {
       margin-right: 8px;
-      transform: translateY(3px); /* ルビによるズレを調整 */
       accent-color: #ffcc00;
       cursor: pointer;
       flex-shrink: 0;
-      width: 16px;
-      height: 16px;
+      width: 14px;
+      height: 14px;
     }
 
     .example-box {
@@ -529,7 +524,8 @@
 
     <label>▶ <ruby>詳<rt>くわ</rt></ruby>しい<ruby>内容<rt>ないよう</rt></ruby>（メモ）</label>
     <div class="example-box">
-      <ruby>例<rt>れい</rt></ruby>：<ruby>漢字<rt>かんじ</rt></ruby>ドリル／<ruby>皿洗<rt>さらあら</rt></ruby>い／<ruby>走<rt>はし</rt></ruby>り<ruby>込<rt>こ</rt></ruby>み
+      <!-- 例文を なわとび に変更 -->
+      <ruby>例<rt>れい</rt></ruby>：<ruby>漢字<rt>かんじ</rt></ruby>ドリル／<ruby>皿洗<rt>さらあら</rt></ruby>い／なわとび
     </div>
     <input type="text" id="actionDetail" placeholder="なにをしたか入力してね">
 
@@ -1019,7 +1015,6 @@
       }
     };
 
-    // ドットの半分未満（2px）のシャープなアウトライン
     const out = 2; 
     const offsets = [
       [0, -out], [0, out], [-out, 0], [out, 0],
@@ -1325,15 +1320,34 @@
     loadHero();
   }
 
+  // ★ カテゴリごとの専用評価メッセージ生成処理 ★
   function getRandomMessage(name, category, detail, timeMinutes) {
     const detailStr = detail ? `（${detail}）` : "";
-    const msgPool = [
-      `【<ruby>評価<rt>ひょうか</rt></ruby>】${timeMinutes}<ruby>分間<rt>ふんかん</rt></ruby>、<ruby>集中<rt>しゅうちゅう</rt></ruby>して「${category}${detailStr}」に<ruby>取<rt>と</rt></ruby>り<ruby>組<rt>く</rt></ruby>んだ！${name}の<ruby>頑張<rt>がんば</rt></ruby>りでパワーが<ruby>満ち溢<rt>みちあふ</rt></ruby>れる！`,
-      `【<ruby>評価<rt>ひょうか</rt></ruby>】すさまじい<ruby>集中力<rt>しゅうちゅうりょく</rt></ruby>だ！${timeMinutes}<ruby>分間<rt>ふんかん</rt></ruby>の「${category}${detailStr}」で${name}の<ruby>攻撃力<rt>こうげきりょく</rt></ruby>が<ruby>大幅<rt>おおはば</rt></ruby>アップ！その<ruby>調子<rt>ちょうし</rt></ruby>で<ruby>突<rt>つ</rt></ruby>き<ruby>進<rt>すす</rt></ruby>め！`,
-      `【<ruby>評価<rt>ひょうか</rt></ruby>】<ruby>素晴<rt>すば</rt></ruby>らしい<ruby>継続力<rt>けいぞくりょく</rt></ruby>！${timeMinutes}<ruby>分間<rt>ふんかん</rt></ruby>の<ruby>努力<rt>どりょく</rt></ruby>「${category}${detailStr}」がヒーローの<ruby>大<rt>おお</rt></ruby>きな<ruby>糧<rt>かて</rt></ruby>となった！<ruby>新<rt>あたら</rt></ruby>たな<ruby>高<rt>たか</rt></ruby>みへ！`,
-      `【<ruby>評価<rt>ひょうか</rt></ruby>】<ruby>伝説<rt>でんせつ</rt></ruby>の<ruby>勇者<rt>ゆうしゃ</rt></ruby>への<ruby>第一歩<rt>だいいっぽ</rt></ruby>！${timeMinutes}<ruby>分間<rt>ふんかん</rt></ruby>じっくり「${category}${detailStr}」をやり<ruby>遂<rt>と</rt></ruby>げたぞ！${name}の<ruby>成長<rt>せいちょう</rt></ruby>は<ruby>誰<rt>だれ</rt></ruby>にも<ruby>止<rt>と</rt></ruby>められない！`
-    ];
+    
+    const categoryMsgs = {
+      "宿題・勉強": [
+        `【<ruby>評価<rt>ひょうか</rt></ruby>】${timeMinutes}<ruby>分間<rt>ふんかん</rt></ruby>、アタマをフル<ruby>回転<rt>かいてん</rt></ruby>させた！「${category}${detailStr}」の<ruby>努力<rt>どりょく</rt></ruby>で、${name}の<ruby>知力<rt>ちりょく</rt></ruby>がグングン<ruby>上<rt>あ</rt></ruby>がったぞ！`,
+        `【<ruby>評価<rt>ひょうか</rt></ruby>】すごい<ruby>集中力<rt>しゅうちゅうりょく</rt></ruby>だ！「${category}${detailStr}」をやり<ruby>遂<rt>と</rt></ruby>げ、<ruby>知識<rt>ちしき</rt></ruby>の<ruby>剣<rt>けん</rt></ruby>がさらに<ruby>鋭<rt>するど</rt></ruby>く<ruby>研<rt>と</rt></ruby>ぎ<ruby>澄<rt>す</rt></ruby>まされた！`,
+        `【<ruby>評価<rt>ひょうか</rt></ruby>】<ruby>難<rt>むずか</rt></ruby>しいことにも<ruby>逃<rt>に</rt></ruby>げずに<ruby>挑戦<rt>ちょうせん</rt></ruby>！「${category}${detailStr}」の<ruby>経験<rt>けいけん</rt></ruby>が、${name}を<ruby>賢<rt>かしこ</rt></ruby>きヒーローへと<ruby>成長<rt>せいちょう</rt></ruby>させた！`
+      ],
+      "お手伝い": [
+        `【<ruby>評価<rt>ひょうか</rt></ruby>】${timeMinutes}<ruby>分間<rt>ふんかん</rt></ruby>、<ruby>誰<rt>だれ</rt></ruby>かのために<ruby>動<rt>うご</rt></ruby>けたね！「${category}${detailStr}」で、${name}の<ruby>優<rt>やさ</rt></ruby>しさの<ruby>心<rt>こころ</rt></ruby>が<ruby>強化<rt>きょうか</rt></ruby>された！`,
+        `【<ruby>評価<rt>ひょうか</rt></ruby>】ありがとうの<ruby>心<rt>こころ</rt></ruby>がパワーの<ruby>源<rt>みなもと</rt></ruby>！「${category}${detailStr}」をこなした${name}に、<ruby>町<rt>まち</rt></ruby>の<ruby>人<rt>ひと</rt></ruby>たちから<ruby>大喝采<rt>だいかっさい</rt></ruby>！`,
+        `【<ruby>評価<rt>ひょうか</rt></ruby>】ピカピカにしたり<ruby>助<rt>たす</rt></ruby>けたり、<ruby>立派<rt>りっぱ</rt></ruby>な<ruby>勇者<rt>ゆうしゃ</rt></ruby>の<ruby>行動<rt>こうどう</rt></ruby>だ！「${category}${detailStr}」で<ruby>徳<rt>とく</rt></ruby>が<ruby>高<rt>たか</rt></ruby>まり、オーラが<ruby>輝<rt>かがや</rt></ruby>き<ruby>出<rt>だ</rt></ruby>したぞ！`
+      ],
+      "運動・健康": [
+        `【<ruby>評価<rt>ひょうか</rt></ruby>】${timeMinutes}<ruby>分間<rt>ふんかん</rt></ruby>、いっぱい<ruby>体<rt>からだ</rt></ruby>を<ruby>動<rt>うご</rt></ruby>かした！「${category}${detailStr}」で${name}の<ruby>筋肉<rt>きんにく</rt></ruby>がメキメキと<ruby>音<rt>おと</rt></ruby>を<ruby>立<rt>た</rt></ruby>ててパワーアップ！`,
+        `【<ruby>評価<rt>ひょうか</rt></ruby>】いい<ruby>汗<rt>あせ</rt></ruby>かいたね！「${category}${detailStr}」の<ruby>特訓<rt>とっくん</rt></ruby>により、どんなモンスターにも<ruby>負<rt>ま</rt></ruby>けない<ruby>無尽蔵<rt>むじんぞう</rt></ruby>のスタミナを<ruby>手<rt>て</rt></ruby>に<ruby>入<rt>い</rt></ruby>れた！`,
+        `【<ruby>評価<rt>ひょうか</rt></ruby>】すばやさ<ruby>上昇<rt>じょうしょう</rt></ruby>！「${category}${detailStr}」で<ruby>心<rt>こころ</rt></ruby>と<ruby>体<rt>からだ</rt></ruby>を<ruby>鍛<rt>きた</rt></ruby>え<ruby>上<rt>あ</rt></ruby>げ、${name}のアクションスピードが<ruby>限界突破<rt>げんかいとっぱ</rt></ruby>したぞ！`
+      ],
+      "読書": [
+        `【<ruby>評価<rt>ひょうか</rt></ruby>】${timeMinutes}<ruby>分間<rt>ふんかん</rt></ruby>、<ruby>新<rt>あたら</rt></ruby>しい<ruby>世界<rt>せかい</rt></ruby>を<ruby>冒険<rt>ぼうけん</rt></ruby>した！「${category}${detailStr}」で<ruby>得<rt>え</rt></ruby>た<ruby>想像力<rt>そうぞうりょく</rt></ruby>で、${name}に<ruby>魔法<rt>まほう</rt></ruby>のチカラが<ruby>宿<rt>やど</rt></ruby>った！`,
+        `【<ruby>評価<rt>ひょうか</rt></ruby>】<ruby>本<rt>ほん</rt></ruby>は<ruby>知識<rt>ちしき</rt></ruby>の<ruby>宝箱<rt>たからばこ</rt></ruby>！「${category}${detailStr}」をして、かつての<ruby>大賢者<rt>だいけんじゃ</rt></ruby>が<ruby>残<rt>のこ</rt></ruby>したひみつのスキルを<ruby>身<rt>み</rt></ruby>につけた！`,
+        `【<ruby>評価<rt>ひょうか</rt></ruby>】<ruby>静<rt>しず</rt></ruby>かな<ruby>集中<rt>しゅうちゅう</rt></ruby>タイム！「${category}${detailStr}」によって${name}の<ruby>心<rt>こころ</rt></ruby>が<ruby>落<rt>お</rt></ruby>ち<ruby>着<rt>つ</rt></ruby>き、どんなピンチにも<ruby>動<rt>どう</rt></ruby>じない<ruby>精神力<rt>せいしんりょく</rt></ruby>をゲットした！`
+      ]
+    };
 
+    let msgPool = categoryMsgs[category] || categoryMsgs["宿題・勉強"];
     let availableMsgs = msgPool.filter(m => m !== state.lastMsg);
     if (availableMsgs.length === 0) availableMsgs = msgPool;
     const selectedMsg = availableMsgs[Math.floor(Math.random() * availableMsgs.length)];
